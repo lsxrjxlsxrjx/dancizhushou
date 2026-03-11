@@ -922,6 +922,63 @@ async function doCloudUpload() {
       if(TaskManager.processing.length===0 && TaskManager.queue.length===0) gProg.style.display = 'none'; else TaskManager.render();
   }
 }
+async function doCloudUpload() {
+  const repoPath = config.gistId; 
+  if(!repoPath || !config.githubToken) return toast('请先在设置中配置 GitHub 仓库和 Token');
+  const gProg = document.getElementById('globalProgress'), gText = document.getElementById('globalProgressText');
+  gProg.style.display = 'block'; gText.textContent = '正在覆盖上传到 GitHub 仓库...';
+  try {
+      const url = `https://api.github.com/repos/${repoPath}/contents/vocab_data.json`;
+      
+      // 1. 获取当前文件的 SHA 标识（加入时间戳和 no-cache 彻底击穿浏览器缓存）
+      let sha = '';
+      const getResp = await fetch(url + '?t=' + Date.now(), { 
+          headers: { 
+              'Authorization': `Bearer ${config.githubToken}`,
+              'Cache-Control': 'no-cache, no-store, must-revalidate'
+          } 
+      });
+      
+      if(getResp.ok) { 
+          const fileData = await getResp.json(); 
+          sha = fileData.sha; 
+      }
+
+      // 2. 准备数据并进行 Base64 编码
+      const contentStr = JSON.stringify({ words, config: getSafeConfig(), lastSaveTime: fmtNow() });
+      const base64Content = btoa(unescape(encodeURIComponent(contentStr)));
+
+      // 3. 发送更新请求
+      const payload = { message: 'Auto-sync update via Web App', content: base64Content };
+      if (sha) payload.sha = sha; // 必须带上刚获取的 sha
+
+      const putResp = await fetch(url, {
+          method: 'PUT',
+          headers: { 
+              'Accept': 'application/vnd.github.v3+json',
+              'Authorization': `Bearer ${config.githubToken}`,
+              'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify(payload)
+      });
+      
+      if(!putResp.ok) {
+          const errData = await putResp.json();
+          throw new Error(errData.message || `HTTP ${putResp.status}`);
+      }
+      
+      toast('✅ 云端仓库上传成功'); log('云端仓库上传成功 (Repo API)');
+      markClean(); lastSaveTime = fmtNow(); document.getElementById('lastSaveTime').textContent = lastSaveTime;
+      closeModal('cloudSyncModal');
+  } catch(e) {
+      toast('❌ 上传失败: ' + e.message); log('上传失败: ' + e.message);
+      if(e.message.includes('sha')) {
+          alert('【同步提示】\n获取不到指纹。请检查 GitHub 里的文件名是不是严格的全小写 vocab_data.json！\n如果确认无误，请先点一次【从云端下载】同步状态，然后再点上传。');
+      }
+  } finally {
+      if(TaskManager.processing.length===0 && TaskManager.queue.length===0) gProg.style.display = 'none'; else TaskManager.render();
+  }
+}
 
 async function doCloudDownload() {
   const repoPath = config.gistId; // 借用 gistId 变量存仓库路径
