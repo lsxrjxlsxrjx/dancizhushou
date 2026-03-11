@@ -891,7 +891,7 @@ async function doCloudUpload() {
       
       // 1. 先获取当前文件的 SHA 标识（Repo API 更新文件必须提供旧版 SHA）
       let sha = '';
-      const getResp = await fetch(url, { headers: { 'Authorization': `Bearer ${config.githubToken}` } });
+      const getResp = await fetch(url + '?t=' + Date.now(), { headers: { 'Authorization': `Bearer ${config.githubToken}` } });
       if(getResp.ok) { const fileData = await getResp.json(); sha = fileData.sha; }
 
       // 2. 准备数据并进行 Base64 编码 (解决中文乱码)
