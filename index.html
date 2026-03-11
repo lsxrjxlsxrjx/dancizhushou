@@ -477,9 +477,9 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
       <div class="sr" style="margin-bottom:14px"><button onclick="testQueryApi()">🧪 测试查询 API</button></div>
       <div id="testResultQuery"></div>
 
-      <div style="font-size:.9rem;font-weight:700;color:var(--pl);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--border)">☁️ 云端同步设置 (GitHub Gist)</div>
-      <div class="sg"><label>GitHub Gist ID</label><input type="text" id="cfgGistId" placeholder="例如: 8a4b... (Gist URL 后面的那串字符)"></div>
-      <div class="sg"><label>GitHub Token (PAT)</label><div style="display:flex;gap:6px"><input type="password" id="cfgGithubToken" style="flex:1" placeholder="以 ghp_ 开头的 Token，强制保存在本地缓存"><button onclick="toggleVis('cfgGithubToken',this)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:.85rem;flex-shrink:0">👁</button></div></div>
+      <div style="font-size:.9rem;font-weight:700;color:var(--pl);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--border)">☁️ 云端同步设置 (GitHub 官方仓库 API)</div>
+      <div class="sg"><label>GitHub 仓库名 (格式: 用户名/仓库名)</label><input type="text" id="cfgGistId" placeholder="例如: lsxrjxlsxrjx/my-word"></div>
+      <div class="sg"><label>专属 Token (Fine-grained PAT)</label><div style="display:flex;gap:6px"><input type="password" id="cfgGithubToken" style="flex:1" placeholder="填入刚生成的 github_pat_..."><button onclick="toggleVis('cfgGithubToken',this)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:.85rem;flex-shrink:0">👁</button></div></div>
 
       <div style="font-size:.9rem;font-weight:700;color:var(--muted);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--border)">⚙ 其他设置</div>
       <div class="sg"><label>后台并发任务数量 (1-20)</label><input type="number" id="cfgConcurrency" min="1" max="20" value="3"></div>
@@ -882,29 +882,38 @@ window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); 
 function openCloudSync() { document.getElementById('cloudSyncModal').classList.add('show'); }
 
 async function doCloudUpload() {
-  if(!config.gistId || !config.githubToken) return toast('请先在设置中配置 GitHub Gist ID 和 Token');
+  const repoPath = config.gistId; // 借用 gistId 变量存仓库路径
+  if(!repoPath || !config.githubToken) return toast('请先在设置中配置 GitHub 仓库和 Token');
   const gProg = document.getElementById('globalProgress'), gText = document.getElementById('globalProgressText');
-  gProg.style.display = 'block'; gText.textContent = '正在上传到 GitHub Gist...';
+  gProg.style.display = 'block'; gText.textContent = '正在覆盖上传到 GitHub 仓库...';
   try {
-      const payload = {
-          files: {
-              "vocab_data.json": {
-                  content: JSON.stringify({ words, config: getSafeConfig(), lastSaveTime: fmtNow() })
-              }
-          }
-      };
-      const resp = await fetch(`https://api.github.com/gists/${config.gistId}`, {
-          method: 'PATCH',
+      const url = `https://api.github.com/repos/${repoPath}/contents/vocab_data.json`;
+      
+      // 1. 先获取当前文件的 SHA 标识（Repo API 更新文件必须提供旧版 SHA）
+      let sha = '';
+      const getResp = await fetch(url, { headers: { 'Authorization': `Bearer ${config.githubToken}` } });
+      if(getResp.ok) { const fileData = await getResp.json(); sha = fileData.sha; }
+
+      // 2. 准备数据并进行 Base64 编码 (解决中文乱码)
+      const contentStr = JSON.stringify({ words, config: getSafeConfig(), lastSaveTime: fmtNow() });
+      const base64Content = btoa(unescape(encodeURIComponent(contentStr)));
+
+      // 3. 发送更新请求
+      const payload = { message: 'Auto-sync update via Web App', content: base64Content };
+      if (sha) payload.sha = sha;
+
+      const putResp = await fetch(url, {
+          method: 'PUT',
           headers: { 
-              'Accept': 'application/vnd.github+json',
+              'Accept': 'application/vnd.github.v3+json',
               'Authorization': `Bearer ${config.githubToken}`,
-              'X-GitHub-Api-Version': '2022-11-28',
               'Content-Type': 'application/json' 
           },
           body: JSON.stringify(payload)
       });
-      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      toast('✅ 云端上传成功'); log('云端上传成功 (GitHub Gist)');
+      if(!putResp.ok) throw new Error(`HTTP ${putResp.status}`);
+      
+      toast('✅ 云端仓库上传成功'); log('云端仓库上传成功 (Repo API)');
       markClean(); lastSaveTime = fmtNow(); document.getElementById('lastSaveTime').textContent = lastSaveTime;
       closeModal('cloudSyncModal');
   } catch(e) {
@@ -915,42 +924,37 @@ async function doCloudUpload() {
 }
 
 async function doCloudDownload() {
-  if(!config.gistId || !config.githubToken) return toast('请先在设置中配置 GitHub Gist ID 和 Token');
+  const repoPath = config.gistId; // 借用 gistId 变量存仓库路径
+  if(!repoPath || !config.githubToken) return toast('请先在设置中配置 GitHub 仓库和 Token');
   if(!confirm('下载将覆盖本地所有词汇和设置，确定继续吗？')) return;
   const gProg = document.getElementById('globalProgress'), gText = document.getElementById('globalProgressText');
-  gProg.style.display = 'block'; gText.textContent = '正在从 GitHub Gist 下载...';
+  gProg.style.display = 'block'; gText.textContent = '正在从 GitHub 仓库下载...';
   try {
-      const resp = await fetch(`https://api.github.com/gists/${config.gistId}`, {
+      // 突破1MB限制的神奇请求头：application/vnd.github.v3.raw，直接返回纯文本
+      const resp = await fetch(`https://api.github.com/repos/${repoPath}/contents/vocab_data.json`, {
           method: 'GET',
           headers: { 
-              'Accept': 'application/vnd.github+json',
-              'Authorization': `Bearer ${config.githubToken}`,
-              'X-GitHub-Api-Version': '2022-11-28'
+              'Accept': 'application/vnd.github.v3.raw',
+              'Authorization': `Bearer ${config.githubToken}`
           }
       });
       if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      if(!data.files || !data.files['vocab_data.json']) throw new Error('Gist 中找不到 vocab_data.json 文件');
-      const recordStr = data.files['vocab_data.json'].content;
-      if(!recordStr) throw new Error('云端数据为空');
+      const recordStr = await resp.text();
+      if(!recordStr) throw new Error('云端仓库数据为空');
       const record = JSON.parse(recordStr);
       if(!record || !record.words) throw new Error('云端数据格式错误');
       
       words = record.words;
       if(record.config) {
           let c = record.config;
-          // 防止覆盖本地已填好的密钥
-          c.apiKey = config.apiKey;
-          c.qApiKey = config.qApiKey;
-          c.gistId = config.gistId;
-          c.githubToken = config.githubToken;
+          c.apiKey = config.apiKey; c.qApiKey = config.qApiKey;
+          c.gistId = config.gistId; c.githubToken = config.githubToken;
           config = { ...config, ...c };
           applyUISize(config.uiSize || 'm');
       }
       lastSaveTime = record.lastSaveTime || fmtNow();
-      markDirty();
-      renderWords();
-      toast('✅ 从云端下载成功'); log(`从云端下载了 ${words.length} 个单词`);
+      markDirty(); renderWords();
+      toast('✅ 从仓库下载成功'); log(`从云端下载了 ${words.length} 个单词`);
       closeModal('cloudSyncModal');
   } catch(e) {
       toast('❌ 下载失败: ' + e.message); log('下载失败: ' + e.message);
