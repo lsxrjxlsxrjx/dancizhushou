@@ -415,7 +415,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 <div class="mo" id="cloudSyncModal"><div class="md" style="max-width: 400px; min-height: auto;">
   <div class="mh"><h2>☁️ 云同步</h2><button class="mc" onclick="closeModal('cloudSyncModal')">×</button></div>
   <div class="mb" style="display:flex; flex-direction:column; gap:16px; padding: 24px 20px;">
-     <p style="font-size:0.85rem; color:var(--muted); line-height: 1.5;">请确保在“设置”中配置了正确的 JSONBin ID 和密钥。<br>⚠️ 注意：上传会覆盖云端数据，下载会覆盖本地数据。</p>
+     <p style="font-size:0.85rem; color:var(--muted); line-height: 1.5;">请确保在“设置”中配置了正确的 GitHub Gist ID 和 Token。<br>⚠️ 注意：上传会覆盖云端数据，下载会覆盖本地数据。</p>
      <button class="ib" style="background:var(--green); padding: 12px; font-size: 1rem;" onclick="doCloudDownload()">☁️ 从云端下载数据</button>
      <button class="ib" style="background:var(--accent); padding: 12px; font-size: 1rem;" onclick="doCloudUpload()">☁️ 覆盖上传到云端</button>
   </div>
@@ -477,9 +477,9 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
       <div class="sr" style="margin-bottom:14px"><button onclick="testQueryApi()">🧪 测试查询 API</button></div>
       <div id="testResultQuery"></div>
 
-      <div style="font-size:.9rem;font-weight:700;color:var(--pl);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--border)">☁️ 云端同步设置 (JSONBin)</div>
-      <div class="sg"><label>JSONBin ID (Bin_ID)</label><input type="text" id="cfgBinId" placeholder="输入 JSONBin 的 Bin ID"></div>
-      <div class="sg"><label>JSONBin 密钥 (X-Master-Key)</label><div style="display:flex;gap:6px"><input type="password" id="cfgBinKey" style="flex:1" placeholder="填写的密钥将强制保存在本地缓存"><button onclick="toggleVis('cfgBinKey',this)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:.85rem;flex-shrink:0">👁</button></div></div>
+      <div style="font-size:.9rem;font-weight:700;color:var(--pl);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--border)">☁️ 云端同步设置 (GitHub Gist)</div>
+      <div class="sg"><label>GitHub Gist ID</label><input type="text" id="cfgGistId" placeholder="例如: 8a4b... (Gist URL 后面的那串字符)"></div>
+      <div class="sg"><label>GitHub Token (PAT)</label><div style="display:flex;gap:6px"><input type="password" id="cfgGithubToken" style="flex:1" placeholder="以 ghp_ 开头的 Token，强制保存在本地缓存"><button onclick="toggleVis('cfgGithubToken',this)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:.85rem;flex-shrink:0">👁</button></div></div>
 
       <div style="font-size:.9rem;font-weight:700;color:var(--muted);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--border)">⚙ 其他设置</div>
       <div class="sg"><label>后台并发任务数量 (1-20)</label><input type="number" id="cfgConcurrency" min="1" max="20" value="3"></div>
@@ -696,7 +696,7 @@ function loadEmbedded() {
       apiUrl: d.config?.apiUrl || '', apiKey: d.config?.apiKey || '', modelId: d.config?.modelId || '', prompt: d.config?.prompt || DEFAULT_PROMPT,
       qApiUrl: d.config?.qApiUrl || '', qApiKey: d.config?.qApiKey || '', qModelId: d.config?.qModelId || '', qPrompt: d.config?.qPrompt || DEFAULT_QUERY_PROMPT,
       pPrompt: d.config?.pPrompt || DEFAULT_P_PROMPT, fPrompt: d.config?.fPrompt || DEFAULT_F_PROMPT,
-      binId: d.config?.binId || '', binKey: d.config?.binKey || '',
+      gistId: d.config?.gistId || '', githubToken: d.config?.githubToken || '',
       timestamp: !!d.config?.timestamp, concurrencyLimit: d.config?.concurrencyLimit || 3, autoPronounce: d.config?.autoPronounce !== false,
       reciteShowMeaning: d.config?.reciteShowMeaning !== false, 
       reciteShowPhonetic: d.config?.reciteShowPhonetic !== false, 
@@ -718,11 +718,11 @@ function loadEmbedded() {
       ansShowNote: d.config?.ansShowNote !== false,
     };
     
-    // 安全策略：强制从本地浏览器 localStorage 提取密钥填充，而不是依赖 embedded-data
+    // 安全策略：强制从本地浏览器 localStorage 提取密钥填充
     config.apiKey = localStorage.getItem('vocab_apiKey') || config.apiKey || '';
     config.qApiKey = localStorage.getItem('vocab_qApiKey') || config.qApiKey || '';
-    config.binId = localStorage.getItem('vocab_binId') || config.binId || '';
-    config.binKey = localStorage.getItem('vocab_binKey') || config.binKey || '';
+    config.gistId = localStorage.getItem('vocab_gistId') || config.gistId || '';
+    config.githubToken = localStorage.getItem('vocab_githubToken') || config.githubToken || '';
     
     applyUISize(config.uiSize);
     lastSaveTime = d.lastSaveTime || '';
@@ -847,17 +847,17 @@ function getSafeConfig() {
   const sc = { ...config };
   sc.apiKey = '';
   sc.qApiKey = '';
-  sc.binId = '';
-  sc.binKey = '';
+  sc.githubToken = '';
   return sc;
 }
 
 // =====================================================
-// CLOUD SYNC & FILE I/O
+// CLOUD SYNC & FILE I/O (GITHUB GIST)
 // =====================================================
 function getFullHTML() {
   const data = JSON.stringify({ words, config: getSafeConfig(), lastSaveTime }); const html = document.documentElement.outerHTML;
   const re = /(<script id="embedded-data" type="application\/json">)([\s\S]*?)(<\/script>)/;
+  // 使用回调函数返回，彻底阻断内容中带有 $n 的符号对正则替换的破坏
   return '<!DOCTYPE html>\n<html lang="zh-CN">' + html.slice(html.indexOf('<head>')).replace(re, function(match, p1, p2, p3) { 
       return p1 + data + p3; 
   });
@@ -882,18 +882,29 @@ window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); 
 function openCloudSync() { document.getElementById('cloudSyncModal').classList.add('show'); }
 
 async function doCloudUpload() {
-  if(!config.binId || !config.binKey) return toast('请先在设置中配置 JSONBin ID 和密钥');
+  if(!config.gistId || !config.githubToken) return toast('请先在设置中配置 GitHub Gist ID 和 Token');
   const gProg = document.getElementById('globalProgress'), gText = document.getElementById('globalProgressText');
-  gProg.style.display = 'block'; gText.textContent = '正在上传到云端...';
+  gProg.style.display = 'block'; gText.textContent = '正在上传到 GitHub Gist...';
   try {
-      const payload = { words, config: getSafeConfig(), lastSaveTime: fmtNow() };
-      const resp = await fetch(`https://api.jsonbin.io/v3/b/${config.binId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'X-Master-Key': config.binKey },
+      const payload = {
+          files: {
+              "vocab_data.json": {
+                  content: JSON.stringify({ words, config: getSafeConfig(), lastSaveTime: fmtNow() })
+              }
+          }
+      };
+      const resp = await fetch(`https://api.github.com/gists/${config.gistId}`, {
+          method: 'PATCH',
+          headers: { 
+              'Accept': 'application/vnd.github+json',
+              'Authorization': `Bearer ${config.githubToken}`,
+              'X-GitHub-Api-Version': '2022-11-28',
+              'Content-Type': 'application/json' 
+          },
           body: JSON.stringify(payload)
       });
       if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      toast('✅ 云端上传成功'); log('云端上传成功');
+      toast('✅ 云端上传成功'); log('云端上传成功 (GitHub Gist)');
       markClean(); lastSaveTime = fmtNow(); document.getElementById('lastSaveTime').textContent = lastSaveTime;
       closeModal('cloudSyncModal');
   } catch(e) {
@@ -904,29 +915,39 @@ async function doCloudUpload() {
 }
 
 async function doCloudDownload() {
-  if(!config.binId || !config.binKey) return toast('请先在设置中配置 JSONBin ID 和密钥');
+  if(!config.gistId || !config.githubToken) return toast('请先在设置中配置 GitHub Gist ID 和 Token');
   if(!confirm('下载将覆盖本地所有词汇和设置，确定继续吗？')) return;
   const gProg = document.getElementById('globalProgress'), gText = document.getElementById('globalProgressText');
-  gProg.style.display = 'block'; gText.textContent = '正在从云端下载...';
+  gProg.style.display = 'block'; gText.textContent = '正在从 GitHub Gist 下载...';
   try {
-      const resp = await fetch(`https://api.jsonbin.io/v3/b/${config.binId}/latest`, {
-          headers: { 'X-Master-Key': config.binKey }
+      const resp = await fetch(`https://api.github.com/gists/${config.gistId}`, {
+          method: 'GET',
+          headers: { 
+              'Accept': 'application/vnd.github+json',
+              'Authorization': `Bearer ${config.githubToken}`,
+              'X-GitHub-Api-Version': '2022-11-28'
+          }
       });
       if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-      if(!data.record || !data.record.words) throw new Error('云端数据格式错误');
-      words = data.record.words;
-      if(data.record.config) {
-          let c = data.record.config;
+      if(!data.files || !data.files['vocab_data.json']) throw new Error('Gist 中找不到 vocab_data.json 文件');
+      const recordStr = data.files['vocab_data.json'].content;
+      if(!recordStr) throw new Error('云端数据为空');
+      const record = JSON.parse(recordStr);
+      if(!record || !record.words) throw new Error('云端数据格式错误');
+      
+      words = record.words;
+      if(record.config) {
+          let c = record.config;
           // 防止覆盖本地已填好的密钥
           c.apiKey = config.apiKey;
           c.qApiKey = config.qApiKey;
-          c.binId = config.binId;
-          c.binKey = config.binKey;
+          c.gistId = config.gistId;
+          c.githubToken = config.githubToken;
           config = { ...config, ...c };
           applyUISize(config.uiSize || 'm');
       }
-      lastSaveTime = data.record.lastSaveTime || fmtNow();
+      lastSaveTime = record.lastSaveTime || fmtNow();
       markDirty();
       renderWords();
       toast('✅ 从云端下载成功'); log(`从云端下载了 ${words.length} 个单词`);
@@ -1221,38 +1242,36 @@ async function doFollowUp() {
 const wp = document.getElementById('wordPopup');
 const wpHeader = document.querySelector('.wp-header');
 
-// 弹窗拖拽逻辑
+// 修复弹窗拖拽逻辑：彻底废弃受滚动条影响的 clientX/clientY，改用纯净的文档坐标 pageX/pageY
 let isDraggingWp = false, wpOffsetX = 0, wpOffsetY = 0;
 wpHeader.addEventListener('mousedown', function(e) {
   if(e.target.tagName.toLowerCase() === 'button') return;
   isDraggingWp = true;
-  const rect = wp.getBoundingClientRect();
-  wpOffsetX = e.clientX - rect.left;
-  wpOffsetY = e.clientY - rect.top;
+  wpOffsetX = e.pageX - wp.offsetLeft;
+  wpOffsetY = e.pageY - wp.offsetTop;
   e.preventDefault();
 });
 document.addEventListener('mousemove', function(e) {
   if(!isDraggingWp) return;
-  wp.style.left = (e.clientX - wpOffsetX) + 'px';
-  wp.style.top = (e.clientY - wpOffsetY) + 'px';
+  wp.style.left = (e.pageX - wpOffsetX) + 'px';
+  wp.style.top = (e.pageY - wpOffsetY) + 'px';
 });
 document.addEventListener('mouseup', function() { isDraggingWp = false; });
 
-// 兼容触屏拖拽
+// 兼容触屏拖拽（同样改用 pageX/pageY 消除跳动）
 wpHeader.addEventListener('touchstart', function(e) {
   if(e.target.tagName.toLowerCase() === 'button') return;
   const touch = e.touches[0];
   isDraggingWp = true;
-  const rect = wp.getBoundingClientRect();
-  wpOffsetX = touch.clientX - rect.left;
-  wpOffsetY = touch.clientY - rect.top;
+  wpOffsetX = touch.pageX - wp.offsetLeft;
+  wpOffsetY = touch.pageY - wp.offsetTop;
 }, {passive: false});
 document.addEventListener('touchmove', function(e) {
   if(!isDraggingWp) return;
   e.preventDefault();
   const touch = e.touches[0];
-  wp.style.left = (touch.clientX - wpOffsetX) + 'px';
-  wp.style.top = (touch.clientY - wpOffsetY) + 'px';
+  wp.style.left = (touch.pageX - wpOffsetX) + 'px';
+  wp.style.top = (touch.pageY - wpOffsetY) + 'px';
 }, {passive: false});
 document.addEventListener('touchend', function() { isDraggingWp = false; });
 
@@ -1276,12 +1295,14 @@ function handleGlobalSelection(e) {
                 lastWordPopupTime = Date.now();
 
                 let touch = e.changedTouches ? e.changedTouches[0] : e;
-                let px = touch.clientX, py = touch.clientY;
+                // 注意：由于弹窗是 absolute 定位，这里的起点也需使用文档坐标 pageX/pageY
+                let px = touch.pageX || (touch.clientX + window.scrollX), 
+                    py = touch.pageY || (touch.clientY + window.scrollY);
                 try {
                     // 尝试获取选区底部的精确坐标，以防弹窗遮挡原生菜单
                     const rect = window.getSelection().getRangeAt(0).getBoundingClientRect();
-                    px = rect.left + rect.width / 2;
-                    py = rect.bottom;
+                    px = rect.left + rect.width / 2 + window.scrollX;
+                    py = rect.bottom + window.scrollY;
                 } catch(err) {}
                 window.getSelection().removeAllRanges(); // 消除底色残影
                 showWordPopup(sel, px, py + 15, false); // false 代表手动模式
@@ -1314,7 +1335,8 @@ function onPtrUp(e) {
 
         // 如果距离很小，且没有任何文字被划选，则视为普通的点击，启动智能边界寻找
         if (dist <= 10 && (!sel || sel.length === 0)) {
-            extractWordAtPoint(endX, endY);
+            // 注意：API 寻找坐标依然用 clientX/clientY，但最终弹窗位置需转换为文档坐标
+            extractWordAtPoint(endX, endY, touch.pageX, touch.pageY);
         }
     }, 50);
 }
@@ -1336,16 +1358,16 @@ pBox.addEventListener('dblclick', function(e) {
     }
 });
 
-function extractWordAtPoint(x, y) {
+function extractWordAtPoint(cx, cy, px, py) {
     let range;
     if (document.caretPositionFromPoint) {
-        let pos = document.caretPositionFromPoint(x, y);
+        let pos = document.caretPositionFromPoint(cx, cy);
         if(pos && pos.offsetNode && pos.offsetNode.nodeType === Node.TEXT_NODE) {
             range = document.createRange();
             range.setStart(pos.offsetNode, pos.offset);
         }
     } else if (document.caretRangeFromPoint) {
-        range = document.caretRangeFromPoint(x, y);
+        range = document.caretRangeFromPoint(cx, cy);
     }
     
     if (!range) { hideWordPopup(); return; }
@@ -1375,7 +1397,10 @@ function extractWordAtPoint(x, y) {
         if (Date.now() - lastWordPopupTime < 500) return; // 防抖，拦截幽灵重发
         lastWordPopupTime = Date.now();
         window.getSelection().removeAllRanges();
-        showWordPopup(word.toLowerCase(), x, y, true);
+        // 如果无法获取 pageX/pageY，则使用滚动补偿计算
+        let finalX = px !== undefined ? px : (cx + window.scrollX);
+        let finalY = py !== undefined ? py : (cy + window.scrollY);
+        showWordPopup(word.toLowerCase(), finalX, finalY, true);
     } else {
         hideWordPopup();
     }
@@ -1401,10 +1426,19 @@ function hideWordPopup() {
 
 async function showWordPopup(word, x, y, autoSearch = true) {
   wp.style.display = 'flex';
-  const ww = window.innerWidth, wh = window.innerHeight;
+  
+  // 优化边界碰撞计算，统一采用包含文档滚动距离的值
+  const maxW = document.documentElement.scrollWidth;
+  const maxH = document.documentElement.scrollHeight;
+  
   let left = x, top = y + 20;
-  if (left + 280 > ww) left = ww - 290;
-  if (top + 250 > wh) top = y - 260;
+  if (left + 280 > maxW) left = maxW - 290;
+  if (top + 250 > maxH) top = y - 260; // 向上翻
+  
+  // 防止翻出页面顶部
+  if (top < window.scrollY) top = window.scrollY + 10;
+  if (left < window.scrollX) left = window.scrollX + 10;
+  
   wp.style.left = left + 'px'; wp.style.top = top + 'px';
   
   document.getElementById('wpWord').textContent = word;
@@ -2009,7 +2043,9 @@ function openSettings() {
   document.getElementById('cfgPPrompt').value=config.pPrompt;
   document.getElementById('cfgFPrompt').value=config.fPrompt;
   
-  document.getElementById('cfgBinId').value=config.binId || ''; document.getElementById('cfgBinKey').value=config.binKey || '';
+  // 更新为 GitHub Gist 设值
+  document.getElementById('cfgGistId').value=config.gistId || ''; 
+  document.getElementById('cfgGithubToken').value=config.githubToken || '';
   
   document.getElementById('cfgConcurrency').value=config.concurrencyLimit || 3; 
   syncUI('cfgTimestamp','tsTrack','tsKnob', config.timestamp);
@@ -2051,14 +2087,14 @@ function saveSettings() {
   config.pPrompt=document.getElementById('cfgPPrompt').value||DEFAULT_P_PROMPT;
   config.fPrompt=document.getElementById('cfgFPrompt').value||DEFAULT_F_PROMPT;
   
-  config.binId=document.getElementById('cfgBinId').value.trim();
-  config.binKey=document.getElementById('cfgBinKey').value.trim();
+  config.gistId=document.getElementById('cfgGistId').value.trim();
+  config.githubToken=document.getElementById('cfgGithubToken').value.trim();
   
   // 安全策略：所有密钥存入本地存储 localStorage
   localStorage.setItem('vocab_apiKey', config.apiKey);
   localStorage.setItem('vocab_qApiKey', config.qApiKey);
-  localStorage.setItem('vocab_binId', config.binId);
-  localStorage.setItem('vocab_binKey', config.binKey);
+  localStorage.setItem('vocab_gistId', config.gistId);
+  localStorage.setItem('vocab_githubToken', config.githubToken);
   
   let limit = parseInt(document.getElementById('cfgConcurrency').value); if(isNaN(limit) || limit < 1) limit = 1; if(limit > 20) limit = 20;
   const isLimInc = limit > config.concurrencyLimit; config.concurrencyLimit = limit; document.getElementById('cfgConcurrency').value = limit; if(isLimInc) TaskManager.pump();
@@ -2135,8 +2171,8 @@ function handleJsonImport(e) {
         // 防覆盖，防止导入空密码把本地密码抹掉
         c.apiKey = config.apiKey;
         c.qApiKey = config.qApiKey;
-        c.binId = config.binId;
-        c.binKey = config.binKey;
+        c.gistId = config.gistId;
+        c.githubToken = config.githubToken;
         
         config = { ...config, ...c };
         
