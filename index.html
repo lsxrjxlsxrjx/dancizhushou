@@ -1,0 +1,2229 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>词汇学习助手</title>
+<style>
+:root{--bg:#f4f1eb;--card:#fff;--primary:#2c3e50;--pl:#3d5a80;--accent:#e07a2f;--green:#27ae60;--red:#e74c3c;--text:#2c2c2c;--muted:#888;--border:#e0dcd4;--shadow:0 2px 12px rgba(0,0,0,.06);--r:10px;--f:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;--fm:"SF Mono","Fira Code",Consolas,monospace; --us: 1;}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100vh;-webkit-tap-highlight-color:transparent;position:relative}
+.hd{background:var(--primary);color:#fff;padding:14px 20px;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.15)}
+.hd-in{display:flex;align-items:center;justify-content:space-between;max-width:900px;margin:0 auto}
+.hd h1{font-size:1.2rem;font-weight:700;letter-spacing:1px}
+.hd-acts{display:flex;gap:6px;flex-wrap:wrap}
+.hd-acts button{background:rgba(255,255,255,.15);border:none;color:#fff;padding:calc(7px * var(--us)) calc(12px * var(--us));border-radius:6px;cursor:pointer;font-size:calc(.82rem * var(--us));font-family:var(--f);transition:background .2s;white-space:nowrap}
+.hd-acts button:hover{background:rgba(255,255,255,.25)}
+.hd-acts .sv{background:var(--accent)}
+.hd-acts .sv:hover{background:#c96a20}
+.hd-acts .rm{background:#8e44ad;font-weight:700}
+.hd-acts .rm.on{background:#f1c40f;color:#2c3e50}
+
+.dirty-dot{display:none;width:7px;height:7px;background:#ff4444;border-radius:50%;margin-left:4px;vertical-align:middle;animation:pulse 1.5s infinite}
+.dirty-dot.on{display:inline-block}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.tb{background:var(--card);border-bottom:1px solid var(--border);padding:10px 20px;position:sticky;top:56px;z-index:99}
+.tb-in{max-width:900px;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.tb label{font-size:calc(.8rem * var(--us));color:var(--muted);margin-right:2px}
+.tb select,.tb input[type="text"]{font-family:var(--f);font-size:calc(.82rem * var(--us));padding:calc(5px * var(--us)) calc(8px * var(--us));border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);outline:none}
+.tb select:focus,.tb input:focus{border-color:var(--pl)}
+.sb{flex:1;min-width:100px}
+.tbb{font-family:var(--f);font-size:calc(.8rem * var(--us));padding:calc(5px * var(--us)) calc(12px * var(--us));border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);cursor:pointer;white-space:nowrap;transition:all .15s}
+.tbb:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+.tbb.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Popup 双向滑块样式 */
+.ds-wrap { position: relative; width: 100%; height: 20px; display: inline-block; vertical-align: middle; margin: 4px 0;}
+.ds-trk { position: absolute; top: 8px; left: 0; right: 0; height: 4px; background: var(--border); border-radius: 2px; z-index: 1;}
+.ds-fill { position: absolute; top: 8px; height: 4px; background: var(--accent); border-radius: 2px; z-index: 2;}
+.ds-wrap input[type=range] { position: absolute; left: 0; top: 0; width: 100%; height: 20px; -webkit-appearance: none; appearance: none; background: none; pointer-events: none; outline: none; margin: 0; z-index: 3;}
+.ds-wrap input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: var(--primary); border-radius: 50%; cursor: pointer; pointer-events: auto; }
+.ds-wrap input[type=range]::-moz-range-thumb { width: 16px; height: 16px; background: var(--primary); border-radius: 50%; cursor: pointer; pointer-events: auto; border:none; }
+
+.wc{max-width:900px;margin:10px auto 0;padding:0 20px;font-size:.78rem;color:var(--muted)}
+.wl{max-width:900px;margin:0 auto;padding:10px 20px 80px}
+.dh{display:flex;align-items:center;justify-content:space-between;padding:calc(10px * var(--us)) calc(14px * var(--us));font-size:calc(.85rem * var(--us));font-weight:600;color:var(--pl);background:linear-gradient(135deg,#eee8dd,#f4f1eb);border:1px solid var(--border);border-radius:var(--r);margin-top:20px;margin-bottom:8px;cursor:pointer;user-select:none;transition:all .15s}
+.dh:hover{color:var(--accent);background:linear-gradient(135deg,#fdf3e6,#fef9f0);border-color:var(--accent)}
+.dh .dt{font-size:calc(.72rem * var(--us));color:var(--muted);transition:color .15s}
+.dh:hover .dt{color:var(--accent)}
+.dh .dt-btn{font-size:calc(.72rem * var(--us));color:var(--primary);background:rgba(255,255,255,.6);padding:calc(3px * var(--us)) calc(10px * var(--us));border-radius:6px;border:1px solid var(--border);transition:all .15s;cursor:pointer}
+.dh .dt-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+.dh .arrow{font-size:calc(.7rem * var(--us));margin-right:6px;display:inline-block;transition:transform .2s}
+.dh .arrow.collapsed{transform:rotate(-90deg)}
+
+/* 添加 content-visibility 性能黑科技 */
+.wcd{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:8px;box-shadow:var(--shadow);transition:box-shadow .2s;animation:fi .3s ease; content-visibility: auto; contain-intrinsic-size: auto 80px;}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.wcd:hover{box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.wt{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.wn{font-size:1.15rem;font-weight:700;color:var(--primary);flex:1;min-width:0;overflow-wrap:break-word}
+.ws{display:flex;gap:2px;margin-left:10px;flex-shrink:0;align-items:center}
+.ws span.st{font-size:1.2rem;cursor:pointer;color:#ddd;transition:color .15s;line-height:1}
+.ws span.st.f{color:var(--accent)}
+.ws span.st:hover{transform:scale(1.2)}
+.wa{display:flex;gap:4px;margin-left:8px;flex-shrink:0}
+.wa button{background:none;border:none;cursor:pointer;font-size:calc(1rem * var(--us));padding:calc(2px * var(--us)) calc(4px * var(--us));opacity:.4;transition:opacity .15s}
+.wa button:hover{opacity:1}
+.an{display:none;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);font-size:.9rem;line-height:1.7}
+.an.show{display:block;animation:fi .25s ease}
+.ar{display:flex;flex-wrap:wrap;gap:6px 16px;margin-bottom:4px}
+.al{font-weight:600;color:var(--pl);min-width:50px;flex-shrink:0}
+.av{color:var(--text);flex:1;min-width:0}
+.ap{color:var(--accent);font-family:var(--fm)}
+.ao{color:var(--green);font-weight:600}
+.as{margin-top:6px}
+.aa{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+.aa button{font-family:var(--f);font-size:calc(.8rem * var(--us));padding:calc(4px * var(--us)) calc(12px * var(--us));border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer;transition:all .15s}
+.aa button:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+.wld{color:var(--muted);font-style:italic;font-size:.85rem;margin-top:8px}
+.wle{color:var(--red);font-size:.85rem;margin-top:8px}
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;justify-content:center;align-items:flex-start;padding:40px 16px;overflow-y:auto}
+.mo.show{display:flex}
+.md{background:var(--card);border-radius:14px;width:100%;max-width:600px;box-shadow:0 10px 40px rgba(0,0,0,.2);animation:mi .25s ease;max-height:calc(100vh - 80px);display:flex;flex-direction:column;resize:both;overflow:auto;min-width:300px;min-height:250px}
+@keyframes mi{from{opacity:0;transform:translateY(-20px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.mh{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.mh h2{font-size:1.1rem}
+.mc{background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--muted);padding:0 4px;line-height:1}
+.mc:hover{color:var(--text)}
+.mb{padding:20px;overflow-y:auto;flex:1}
+.ia{width:100%;min-height:150px;max-height:250px;padding:12px;border:1px solid var(--border);border-radius:8px;font-family:var(--f);font-size:.95rem;resize:vertical;background:var(--bg);outline:none}
+.ia:focus{border-color:var(--pl)}
+.ih{font-size:.78rem;color:var(--muted);margin:8px 0 14px}
+.ib{width:100%;padding:calc(10px * var(--us));background:var(--primary);color:#fff;border:none;border-radius:8px;font-family:var(--f);font-size:calc(.95rem * var(--us));cursor:pointer;transition:background .15s}
+.ib:hover{background:var(--pl)}
+.ib:disabled{opacity:.5;cursor:not-allowed}
+.sg{margin-bottom:18px}
+.sg label{display:block;font-size:.82rem;font-weight:600;color:var(--pl);margin-bottom:4px}
+.sg input,.sg textarea,.sg select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:var(--f);font-size:.88rem;background:var(--bg);outline:none}
+.sg input:focus,.sg textarea:focus,.sg select:focus{border-color:var(--pl)}
+.sg textarea{min-height:100px;resize:vertical;font-size:.82rem}
+.sr{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.sr button{font-family:var(--f);font-size:calc(.82rem * var(--us));padding:calc(6px * var(--us)) calc(16px * var(--us));border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer;transition:all .15s}
+.sr button:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+.sr button.dg{color:var(--red);border-color:var(--red)}
+.sr button.dg:hover{background:var(--red);color:#fff}
+.lb{width:100%;height:150px;padding:10px;background:#1e1e1e;color:#b5cea8;border-radius:8px;font-family:var(--fm);font-size:.72rem;line-height:1.6;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+.tr{margin-top:8px;padding:8px 12px;border-radius:6px;font-size:.82rem}
+.tr.ok{background:#e8f5e9;color:#2e7d32}
+.tr.no{background:#fce4ec;color:#c62828}
+.es{text-align:center;padding:60px 20px;color:var(--muted)}
+.es .icon{font-size:3rem;margin-bottom:14px}
+.es p{font-size:.95rem}
+.ef{margin-bottom:10px}
+.ef label{display:block;font-size:.8rem;font-weight:600;color:var(--pl);margin-bottom:3px}
+.ef input,.ef textarea{width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--f);font-size:.85rem;background:var(--bg);outline:none}
+.ef textarea{min-height:60px;resize:vertical}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;padding:10px 24px;border-radius:8px;font-size:.88rem;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.2);animation:ti .3s ease;pointer-events:none}
+@keyframes ti{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* Tabs & Task Queue */
+.tabs-header{display:flex;border-bottom:2px solid var(--border);margin-bottom:16px}
+.tab-btn{flex:1;padding:calc(8px * var(--us)) calc(4px * var(--us));text-align:center;cursor:pointer;font-weight:700;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s;font-size:calc(.85rem * var(--us));white-space:nowrap}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+.tab-content{display:none}
+.tab-content.active{display:block;animation:fi .3s ease}
+.tk-item{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;font-size:.85rem}
+.tk-word{font-weight:700;color:var(--primary)}
+.tk-type{font-size:.7rem;padding:2px 6px;border-radius:4px;font-weight:600}
+.tk-type.import{background:#e3f2fd;color:#1565c0}
+.tk-type.query{background:#e8f5e9;color:#2e7d32}
+.tk-type.retry{background:#fff3e0;color:#e65100}
+
+@media(max-width:600px){
+.hd{padding:10px 14px}.hd h1{font-size:1rem}.hd-acts button{padding:calc(6px * var(--us)) calc(8px * var(--us));font-size:calc(.75rem * var(--us))}
+.tb{padding:8px 14px;top:46px}.tb-in{gap:6px}.wl{padding:8px 14px 80px}
+.wcd{padding:10px 12px}.wn{font-size:1.05rem}.ws span.st{font-size:1.05rem}
+.md{border-radius:10px}.mb{padding:16px}.ar{gap:4px 10px}.wc{padding:0 14px}
+}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:#aaa}
+
+.sq-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-size:.85rem;line-height:1.7;animation:fi .3s ease}
+.sq-word{font-size:1.05rem;font-weight:700;color:var(--primary);margin-bottom:6px;padding-bottom:6px;border-bottom:2px solid var(--accent)}
+.sq-row{display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:3px}
+.sq-label{font-weight:600;color:var(--pl);min-width:42px;flex-shrink:0}
+.sq-val{color:var(--text);flex:1;min-width:0}
+.sq-phonetic{color:var(--accent);font-family:var(--fm)}
+.sq-pos{color:var(--green);font-weight:600;margin-left:10px}
+.sq-section{margin-top:4px}
+.sq-loading{background:var(--bg);border:1px dashed var(--border);border-radius:8px;padding:12px 14px;color:var(--muted);font-size:.85rem}
+.sq-loading .sq-word{border-bottom-color:var(--border)}
+.sq-cursor{display:inline-block;width:2px;height:1em;background:var(--accent);margin-left:2px;animation:blink 1s step-end infinite;vertical-align:text-bottom}
+
+/* Selection Bar */
+.sel-bar{position:fixed;bottom:0;left:0;right:0;background:var(--primary);color:#fff;padding:10px 20px;z-index:150;box-shadow:0 -2px 12px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;gap:12px;font-size:.85rem;flex-wrap:wrap;animation:fi .2s ease}
+.sel-bar button{background:rgba(255,255,255,.2);border:none;color:#fff;padding:calc(6px * var(--us)) calc(14px * var(--us));border-radius:6px;cursor:pointer;font-family:var(--f);font-size:calc(.82rem * var(--us));transition:background .15s}
+.sel-bar button:hover{background:rgba(255,255,255,.3)}
+.sel-bar .del-btn{background:var(--red)}
+.sel-bar .del-btn:hover{background:#c0392b}
+.sel-bar .run-btn{background:var(--green);font-weight:bold}
+.sel-bar .run-btn:hover{background:#2196f3}
+.sel-cb{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;margin-right:8px}
+.wcd.selected{border-color:var(--accent);background:#fdf6ee}
+
+/* Badges */
+.bdg{font-size:calc(.65rem * var(--us));padding:calc(2px * var(--us)) calc(5px * var(--us));border-radius:4px;margin-left:6px;vertical-align:middle;font-weight:bold;white-space:nowrap;user-select:none}
+.bdg-l0{background:#eee;color:#777;border:1px solid #ddd}
+.bdg-lx{background:#e3f2fd;color:#1565c0;border:1px solid #bbdefb}
+.bdg-td{background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9;animation:fi 1s ease}
+.bdg-wr{background:#ffebee;color:#c62828;border:1px solid #ffcdd2}
+.bdg-gr{background:#fff8e1;color:#f57f17;border:1px solid #ffecb3}
+.date-cb{width:16px;height:16px;accent-color:var(--primary);margin-right:8px;vertical-align:middle;cursor:pointer}
+
+/* Test Modal UI */
+#testModal .md { max-width:800px; height:85vh; min-height:400px; display:flex; flex-direction:column; background:var(--bg) }
+.test-top { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border); background:var(--card) }
+.test-prog-wrap { flex:1; margin:0 20px; height:8px; background:var(--border); border-radius:4px; overflow:hidden }
+.test-prog-fill { height:100%; background:var(--green); width:0%; transition:width 0.3s ease }
+.test-main { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:20px; overflow-y:auto }
+.test-word-hint { font-family:var(--fm); font-size:1.5rem; letter-spacing:4px; color:var(--muted); margin-bottom:10px; min-height:36px; margin-top:2vh;}
+.test-meaning { font-size:1.2rem; font-weight:bold; color:var(--primary); margin-bottom:8px; text-align:center; max-width:90% }
+.test-phonetic { font-family:var(--fm); font-size:1rem; color:var(--accent); margin-bottom:20px; display:flex; align-items:center; gap:8px }
+.test-input { font-size:2.2rem; padding:12px; text-align:center; border:2px solid var(--pl); border-radius:12px; width:90%; max-width:400px; outline:none; font-family:var(--fm); letter-spacing:2px; background:var(--card); color:var(--text); transition:all 0.2s }
+.test-input:focus { box-shadow:0 0 0 4px rgba(61,90,128,0.2) }
+.test-input.ok { border-color:var(--green); background:#e8f5e9; color:var(--green) }
+.test-input.err { border-color:var(--red); background:#fde0dc; color:var(--red); animation:shake 0.4s }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+.test-acts { margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center; width:100% }
+.test-acts button { padding:calc(8px * var(--us)) calc(20px * var(--us)); font-size:calc(0.95rem * var(--us)); border-radius:8px; border:none; cursor:pointer; font-family:var(--f); font-weight:bold; transition:all 0.2s }
+.test-btn-ans { background:#e0e0e0; color:var(--text) }
+.test-btn-ans:hover { background:#d0d0d0 }
+
+.test-ans-box { margin-top:16px; padding:14px; background:#fff3e0; border:1px solid #ffcc80; border-radius:8px; display:none; flex-direction:column; align-items:center; width:100%; max-width:500px; animation:fi 0.3s ease }
+.test-ans-box .ca { font-size:1.8rem; font-family:var(--fm); color:var(--accent); font-weight:bold; letter-spacing:2px; margin-bottom:6px }
+.test-ans-box p { font-size:0.85rem; color:var(--red); font-weight:bold; text-align:center; margin:0;}
+
+.test-full-anno { width:100%; max-width:500px; margin-top:16px; padding:16px; background:var(--card); border:1px solid var(--border); border-radius:8px; text-align:left; animation:fi 0.3s ease; display:none; flex-direction:column; gap:8px;}
+.test-full-anno .ar { display:flex; gap:10px; font-size:0.9rem; line-height:1.6;}
+.test-full-anno .al { font-weight:600; color:var(--pl); flex-shrink:0; width:35px;}
+.test-full-anno .av { color:var(--text); }
+
+/* Import Tabs & Para 解析 & Flex布局绑定 */
+#importModal .mb { display: flex; flex-direction: column; padding-bottom: 20px; }
+.imp-tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 14px; flex-shrink: 0; }
+.imp-tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; font-weight: bold; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .2s; font-size: 0.9rem;}
+.imp-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.imp-pane { display: none; flex-direction: column; flex: 1; min-height: 0; }
+.imp-pane.active { display: flex; animation: fi .3s ease; }
+#imp-t-para .ia { flex-shrink: 0; min-height: 60px; height: 120px; }
+.para-box { flex: 1; font-family: var(--f); font-size: 0.95rem; line-height: 1.8; color: var(--text); background: var(--bg); border: 1px dashed var(--border); border-radius: 8px; padding: 16px; margin-top: 14px; white-space: pre-wrap; word-break: break-word; overflow-y: auto; min-height: 150px; cursor: text; }
+
+/* 句子追问可点击高亮样式 */
+.clickable-sent { color: #3498db; border-bottom: 1px dashed #3498db; cursor: pointer; transition: all .2s; font-weight: bold; }
+.clickable-sent:hover { background: rgba(52,152,219,0.1); color: #2980b9; }
+
+/* AI Loading Animation */
+.ai-think { display: inline-block; color: var(--pl); font-weight: bold; animation: pulse 1.5s infinite; }
+.ai-think::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
+@keyframes dots { 0%, 20% { content: ''; } 40% { content: '.'; } 60% { content: '..'; } 80%, 100% { content: '...'; } }
+
+/* Word Popup */
+.word-popup { position: absolute; z-index: 1000; background: var(--card); border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-radius: 10px; width: 280px; display: none; flex-direction: column; animation: fi .2s ease; overflow: hidden; }
+.wp-header { background: var(--primary); color: #fff; padding: 8px 12px; font-weight: bold; font-size: 1rem; display: flex; justify-content: space-between; align-items: flex-start; cursor: grab; user-select: none; }
+.wp-header:active { cursor: grabbing; }
+#wpWord { max-height: 80px; overflow-y: auto; display: inline-block; word-break: break-all; margin-right: 10px; flex: 1; }
+.wp-body { padding: 12px; font-size: 0.85rem; line-height: 1.6; color: var(--text); min-height: 60px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
+.wp-footer { padding: 8px 12px; background: #f8f9fa; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+.wp-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; font-size: 0.8rem; transition: background .2s; }
+.wp-btn:hover { background: var(--border); }
+.wp-btn.import { background: var(--pl); color: #fff; border: none; }
+.wp-btn.import:hover { background: var(--primary); }
+.wp-btn.search { background: var(--green); color: #fff; border: none; font-weight: bold; }
+.wp-btn.search:hover { background: #2196f3; }
+</style>
+</head>
+<body>
+
+<div class="hd"><div class="hd-in">
+  <h1>📖 词汇学习助手 <span class="dirty-dot" id="dirtyDot"></span></h1>
+  <div class="hd-acts">
+    <button onclick="openImport()">＋ 查询/导入</button>
+    <button class="sv" onclick="openCloudSync()">☁️ 云同步</button>
+    <button class="rm" id="btnReciteMode" onclick="toggleReciteMode()">🧠 背单词</button>
+    <button onclick="openSettings()">⚙ 设置</button>
+  </div>
+</div></div>
+
+<div style="background:var(--card);border-bottom:1px solid var(--border);padding:6px 20px;font-size:.75rem;color:var(--muted)">
+  <div style="max-width:900px;margin:0 auto;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px">
+    <span>上次保存：<span id="lastSaveTime">未保存</span></span>
+    <span>当前时间：<span id="currentTime"></span></span>
+  </div>
+</div>
+
+<div class="tb"><div class="tb-in">
+  <label>排序</label>
+  <select id="sortPrimary" onchange="renderWords()"><option value="date">按日期</option><option value="alpha">按字母</option><option value="stars">按星级</option></select>
+  <select id="sortSecondary" onchange="renderWords()"><option value="none">无二级</option><option value="date">日期</option><option value="alpha">字母</option><option value="stars">星级</option></select>
+  
+  <button class="tbb" id="btnFilter" onclick="openFilterModal()">🎯 筛选 <span id="filterBadge" style="display:none;background:var(--accent);color:#fff;border-radius:10px;padding:2px 6px;font-size:.65rem;margin-left:4px">ON</span></button>
+
+  <input type="text" class="sb" id="searchBox" placeholder="搜索..." oninput="renderWords()" style="margin-left:auto;">
+  <button class="tbb" id="toggleAllBtn" onclick="toggleAll()">全部显示</button>
+  <button class="tbb" id="displayModeBtn" onclick="cycleDisplayMode()">显示：英文</button>
+  <button class="tbb" id="selectModeBtn" onclick="toggleSelectMode()">☑ 选择</button>
+</div></div>
+
+<div id="globalProgress" style="display:none;max-width:900px;margin:8px auto 0;padding:0 20px">
+  <div style="display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted)">
+    <span id="globalProgressText">后台处理中...</span>
+    <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden"><div id="globalProgressFill" style="height:100%;background:var(--green);border-radius:3px;transition:width .3s;width:100%;animation:pulse 1.5s infinite"></div></div>
+  </div>
+</div>
+
+<div class="wc" id="wordCount">共 0 个</div>
+<div class="wl" id="wordList"><div class="es"><div class="icon">📚</div><p>点击「查询/导入」开始添加单词</p></div></div>
+
+<div class="sel-bar" id="selBar" style="display:none">
+  <span id="selCount">已选 0 个</span>
+  <button id="btnRange" onclick="toggleRangeSelect()">🔗 区间连选 (关)</button>
+  <button onclick="selectAllVisible()">全选当前</button>
+  <button onclick="deselectAll()">取消全选</button>
+  
+  <div id="actsManage" style="display:flex;gap:12px;align-items:center">
+    <select id="batchStar" onchange="batchSetStar(this)" style="padding:4px 8px;border-radius:6px;border:none;background:rgba(255,255,255,0.2);color:#fff;font-family:var(--f);outline:none;max-width:100px;">
+      <option value="" disabled selected>⭐ 设星级...</option>
+      <option value="0" style="color:#000">设为 0★</option>
+      <option value="1" style="color:#000">设为 1★</option>
+      <option value="2" style="color:#000">设为 2★</option>
+      <option value="3" style="color:#000">设为 3★</option>
+      <option value="4" style="color:#000">设为 4★</option>
+      <option value="5" style="color:#000">设为 5★</option>
+    </select>
+    <button class="del-btn" onclick="deleteSelected()">🗑 删除</button>
+    <button onclick="toggleSelectMode()">退出选择</button>
+  </div>
+  
+  <div id="actsRecite" style="display:none;gap:12px;align-items:center">
+    <button class="run-btn" onclick="startTest()">▶️ 开始测验</button>
+    <button onclick="batchClearWrong()">✅ 移出错题本</button>
+    <select onchange="batchSetStar(this)" style="padding:4px 8px;border-radius:6px;border:none;background:rgba(255,255,255,0.2);color:#fff;font-family:var(--f);outline:none;max-width:100px;">
+      <option value="" disabled selected>⭐ 设星级...</option>
+      <option value="0" style="color:#000">设为 0★</option>
+      <option value="1" style="color:#000">设为 1★</option>
+      <option value="2" style="color:#000">设为 2★</option>
+      <option value="3" style="color:#000">设为 3★</option>
+      <option value="4" style="color:#000">设为 4★</option>
+      <option value="5" style="color:#000">设为 5★</option>
+    </select>
+    <select id="batchLevel" onchange="batchSetLevel(this)" style="padding:4px 8px;border-radius:6px;border:none;background:rgba(255,255,255,0.2);color:#fff;font-family:var(--f);outline:none;max-width:105px;">
+      <option value="" disabled selected>🔄 改周期...</option>
+      <option value="0" style="color:#000">设为 L0 新词</option>
+      <option value="1" style="color:#000">设为 L1</option>
+      <option value="2" style="color:#000">设为 L2</option>
+      <option value="3" style="color:#000">设为 L3</option>
+      <option value="4" style="color:#000">设为 L4</option>
+      <option value="5" style="color:#000">设为 L5</option>
+      <option value="6" style="color:#000">设为 L6</option>
+      <option value="7" style="color:#000">设为 🎓 掌握</option>
+    </select>
+    <button class="del-btn" onclick="deleteSelected()">🗑 删</button>
+  </div>
+</div>
+
+<input type="file" id="jsonFileInput" accept=".json" style="display:none" onchange="handleJsonImport(event)">
+
+<div class="mo" id="filterModal"><div class="md" style="max-width:400px; min-height:auto">
+  <div class="mh"><h2>🎯 高级筛选</h2><button class="mc" onclick="closeModal('filterModal')">×</button></div>
+  <div class="mb">
+    <div class="sg">
+      <label>特殊状态 (多选取并集)</label>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;padding:8px;background:#f8f9fa;border-radius:8px">
+        <label style="display:inline-flex;align-items:center;font-weight:normal;cursor:pointer"><input type="checkbox" id="f-today" style="width:auto;margin-right:6px;accent-color:var(--accent);transform:scale(1.2)"> ⏳ 今日待背</label>
+        <label style="display:inline-flex;align-items:center;font-weight:normal;cursor:pointer"><input type="checkbox" id="f-wrong" style="width:auto;margin-right:6px;accent-color:var(--red);transform:scale(1.2)"> 🩸 错题本</label>
+        <label style="display:inline-flex;align-items:center;font-weight:normal;cursor:pointer"><input type="checkbox" id="f-none" style="width:auto;margin-right:6px;accent-color:var(--muted);transform:scale(1.2)"> ❓ 无周期</label>
+      </div>
+    </div>
+    
+    <div class="sg" style="margin-top:24px">
+      <label style="display:flex;justify-content:space-between">星级范围 <span id="f-st-lbl" style="color:var(--primary);font-family:var(--fm)">0 - 5★</span></label>
+      <div class="ds-wrap" style="width:100%;margin-top:10px">
+        <div class="ds-trk"></div><div class="ds-fill" id="f-st-fill"></div>
+        <input type="range" id="f-st-min" min="0" max="5" value="0" oninput="updateFilterUI()">
+        <input type="range" id="f-st-max" min="0" max="5" value="5" oninput="updateFilterUI()">
+      </div>
+    </div>
+
+    <div class="sg" style="margin-top:24px">
+      <label style="display:flex;justify-content:space-between">周期范围 <span id="f-eb-lbl" style="color:var(--primary);font-family:var(--fm)">L0 - L7</span></label>
+      <div class="ds-wrap" style="width:100%;margin-top:10px">
+        <div class="ds-trk"></div><div class="ds-fill" id="f-eb-fill"></div>
+        <input type="range" id="f-eb-min" min="0" max="7" value="0" oninput="updateFilterUI()">
+        <input type="range" id="f-eb-max" min="0" max="7" value="7" oninput="updateFilterUI()">
+      </div>
+    </div>
+
+    <div class="sr" style="margin-top:30px;display:flex;gap:10px">
+      <button onclick="applyFilter()" style="flex:2;background:var(--primary);color:#fff">应用筛选</button>
+      <button onclick="resetFilter()" style="flex:1">重置全部</button>
+    </div>
+  </div>
+</div></div>
+
+<div class="mo" id="importModal"><div class="md">
+  <div class="mh"><h2>＋ 添加内容</h2><button class="mc" onclick="closeModal('importModal')">×</button></div>
+  <div class="mb" style="padding-top:10px">
+    
+    <div class="imp-tabs">
+      <div class="imp-tab active" onclick="switchImpTab('imp-t-word', this)">📝 词汇查询/导入</div>
+      <div class="imp-tab" onclick="switchImpTab('imp-t-para', this)">📄 段落解析</div>
+    </div>
+    
+    <div id="imp-t-word" class="imp-pane active" style="overflow-y:auto;">
+      <div style="position:relative; flex-shrink:0;">
+        <textarea class="ia" id="importText" placeholder="每行一个单词或短语...
+导入的新词将自动设为 L0 新词状态"></textarea>
+        <button onclick="document.getElementById('importText').value=''" style="position:absolute;top:6px;right:6px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:.72rem;cursor:pointer;color:var(--muted);opacity:.7" title="清空输入">✕ 清空</button>
+      </div>
+      <div class="ih" style="flex-shrink:0;">🔍 在线查询：流式实时显示，不保存 &nbsp;|&nbsp; 📥 导入：添加到词库并在后台自动生成注释</div>
+      <div style="display:flex;gap:8px; flex-shrink:0;">
+        <button class="ib" style="background:var(--green)" id="queryBtn" onclick="doQuery()">🔍 在线查询</button>
+        <button class="ib" style="background:var(--pl)" id="importBtnEl" onclick="doImportWords()">📥 导入 (后台处理)</button>
+      </div>
+      <div id="streamArea" style="display:none;margin-top:14px; flex-shrink:0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:.82rem;font-weight:600;color:var(--pl)">查询结果（实时）</span>
+          <button onclick="clearStream()" style="font-size:.75rem;padding:3px 10px;border:1px solid var(--border);border-radius:5px;background:var(--bg);cursor:pointer">清空</button>
+        </div>
+        <div id="streamBox" style="width:100%;max-height:400px;overflow-y:auto;display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+    </div>
+    
+    <div id="imp-t-para" class="imp-pane">
+      <div style="position:relative; flex-shrink:0;">
+        <textarea class="ia" id="paraText" placeholder="在此粘贴你要解析的英文段落...&#10;&#10;💡 小提示：在下方生成的解析结果中：&#10;1. 【轻轻点击】或【双击】任何单词，自动快速查词。&#10;2. 【长按】或【鼠标拖拽】划选词组短语，也可精准手动查词！&#10;3. 解析完毕后，点击带有下划线的【原句：】可呼出AI私教针对单句进行独立追问！"></textarea>
+      </div>
+      <button class="ib" style="background:var(--accent); margin-top:8px; flex-shrink:0;" onclick="doAnalyze()">✨ 开始逐句深度解析</button>
+      <div id="paraStreamBox" class="para-box" style="display:none;"></div>
+    </div>
+
+  </div>
+</div></div>
+
+<div class="mo" id="followUpModal" style="z-index:250;">
+  <div class="md">
+    <div class="mh"><h2>🙋 句子解析与追问</h2><button class="mc" onclick="closeModal('followUpModal')">×</button></div>
+    <div class="mb" style="display:flex; flex-direction:column; gap:10px;">
+      <div style="background:#f8f9fa; padding:10px; border-radius:6px; font-family:var(--fm); font-size:0.9rem; color:var(--primary); border-left:3px solid var(--pl);" id="fuSentence"></div>
+      <div style="position:relative; flex-shrink:0;">
+        <textarea class="ia" id="fuQuestion" style="min-height:60px;" placeholder="请输入您的疑问 (如：为什么这里用过去完成时？这句的主语是什么？)"></textarea>
+      </div>
+      <button class="ib" style="background:var(--accent); flex-shrink:0;" onclick="doFollowUp()">发送追问</button>
+      <div id="fuStreamBox" style="display:none; padding:12px; background:var(--bg); border:1px dashed var(--border); border-radius:6px; font-size:0.9rem; line-height:1.7; white-space:pre-wrap; flex:1; overflow-y:auto; min-height:120px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="mo" id="cloudSyncModal"><div class="md" style="max-width: 400px; min-height: auto;">
+  <div class="mh"><h2>☁️ 云同步</h2><button class="mc" onclick="closeModal('cloudSyncModal')">×</button></div>
+  <div class="mb" style="display:flex; flex-direction:column; gap:16px; padding: 24px 20px;">
+     <p style="font-size:0.85rem; color:var(--muted); line-height: 1.5;">请确保在“设置”中配置了正确的 JSONBin ID 和密钥。<br>⚠️ 注意：上传会覆盖云端数据，下载会覆盖本地数据。</p>
+     <button class="ib" style="background:var(--green); padding: 12px; font-size: 1rem;" onclick="doCloudDownload()">☁️ 从云端下载数据</button>
+     <button class="ib" style="background:var(--accent); padding: 12px; font-size: 1rem;" onclick="doCloudUpload()">☁️ 覆盖上传到云端</button>
+  </div>
+</div></div>
+
+<div class="mo" id="settingsModal"><div class="md">
+  <div class="mh"><h2>⚙ 设置</h2><button class="mc" onclick="closeModal('settingsModal')">×</button></div>
+  <div class="mb" style="padding-top:10px">
+    
+    <div class="tabs-header">
+      <div class="tab-btn active" onclick="switchTab('st-gen', this)">通用</div>
+      <div class="tab-btn" onclick="switchTab('st-task', this)">队列 <span id="tabQCount" style="background:var(--red);color:#fff;border-radius:10px;padding:2px 6px;font-size:0.7rem;display:none;vertical-align:middle;margin-left:4px">0</span></div>
+      <div class="tab-btn" onclick="switchTab('st-recite', this)">背词</div>
+      <div class="tab-btn" onclick="switchTab('st-memo', this)">📝 备忘</div>
+    </div>
+
+    <div id="st-gen" class="tab-content active">
+      <div style="font-size:.9rem;font-weight:700;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--border)">🎨 界面与显示设置</div>
+      <div class="sg">
+        <label>UI 元素与按钮大小</label>
+        <select id="cfgUiSize">
+          <option value="xs">特小 (Extra Small)</option>
+          <option value="s">小 (Small)</option>
+          <option value="m">默认 (Default)</option>
+          <option value="l">大 (Large)</option>
+        </select>
+      </div>
+      <div class="sg" style="margin-bottom:24px">
+        <label>列表显示标记 (勾选以显示)</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">
+          <label style="display:inline-flex;align-items:center;font-weight:normal"><input type="checkbox" id="cfgBdStar" style="width:auto;margin-right:4px"> 星级</label>
+          <label style="display:inline-flex;align-items:center;font-weight:normal"><input type="checkbox" id="cfgBdLevel" style="width:auto;margin-right:4px"> 周期等级(L0-L7)</label>
+          <label style="display:inline-flex;align-items:center;font-weight:normal"><input type="checkbox" id="cfgBdRev" style="width:auto;margin-right:4px"> 待背</label>
+          <label style="display:inline-flex;align-items:center;font-weight:normal"><input type="checkbox" id="cfgBdWr" style="width:auto;margin-right:4px"> 错题本</label>
+          <label style="display:inline-flex;align-items:center;font-weight:normal"><input type="checkbox" id="cfgBdNote" style="width:auto;margin-right:4px"> 笔记</label>
+          <label style="display:inline-flex;align-items:center;font-weight:normal"><input type="checkbox" id="cfgBdTimeLeft" style="width:auto;margin-right:4px"> 距待背时间</label>
+        </div>
+      </div>
+
+      <div style="font-size:.9rem;font-weight:700;color:var(--pl);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--pl)">📥 导入 API（非流式）</div>
+      <div class="sg"><label>API 地址</label><input type="text" id="cfgUrl"></div>
+      <div class="sg"><label>API 密钥</label><div style="display:flex;gap:6px"><input type="password" id="cfgKey" style="flex:1" placeholder="填写的密钥将强制保存在本地缓存"><button onclick="toggleVis('cfgKey',this)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:.85rem;flex-shrink:0">👁</button></div></div>
+      <div class="sg"><label>模型 ID</label><input type="text" id="cfgModel"></div>
+      <div class="sg"><label>Prompt</label><textarea id="cfgPrompt"></textarea></div>
+      <div class="sr" style="margin-bottom:14px"><button onclick="testImportApi()">🧪 测试导入 API</button></div>
+      <div id="testResultImport"></div>
+
+      <div style="font-size:.9rem;font-weight:700;color:var(--green);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--green)">🔍 查询 API（流式）</div>
+      <div class="sg"><label>API 地址</label><input type="text" id="cfgQUrl"></div>
+      <div class="sg"><label>API 密钥</label><div style="display:flex;gap:6px"><input type="password" id="cfgQKey" style="flex:1" placeholder="填写的密钥将强制保存在本地缓存"><button onclick="toggleVis('cfgQKey',this)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:.85rem;flex-shrink:0">👁</button></div></div>
+      <div class="sg"><label>模型 ID</label><input type="text" id="cfgQModel"></div>
+      <div class="sg"><label>单词查询 Prompt</label><textarea id="cfgQPrompt"></textarea></div>
+      <div class="sg"><label>段落解析 Prompt</label><textarea id="cfgPPrompt"></textarea></div>
+      <div class="sg"><label>追问解析 Prompt</label><textarea id="cfgFPrompt"></textarea></div>
+      <div class="sg" style="display:flex;align-items:center;gap:10px;margin:4px 0 14px">
+        <label style="margin:0">单词查询完成自动发音</label>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;margin:0"><input type="checkbox" id="cfgAutoPronounce" style="opacity:0;width:0;height:0" onchange="syncUI('cfgAutoPronounce','apTrack','apKnob')"><span id="apTrack" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span><span id="apKnob" style="position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.3s"></span></label>
+      </div>
+      <div class="sr" style="margin-bottom:14px"><button onclick="testQueryApi()">🧪 测试查询 API</button></div>
+      <div id="testResultQuery"></div>
+
+      <div style="font-size:.9rem;font-weight:700;color:var(--pl);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--border)">☁️ 云端同步设置 (JSONBin)</div>
+      <div class="sg"><label>JSONBin ID (Bin_ID)</label><input type="text" id="cfgBinId" placeholder="输入 JSONBin 的 Bin ID"></div>
+      <div class="sg"><label>JSONBin 密钥 (X-Master-Key)</label><div style="display:flex;gap:6px"><input type="password" id="cfgBinKey" style="flex:1" placeholder="填写的密钥将强制保存在本地缓存"><button onclick="toggleVis('cfgBinKey',this)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:.85rem;flex-shrink:0">👁</button></div></div>
+
+      <div style="font-size:.9rem;font-weight:700;color:var(--muted);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--border)">⚙ 其他设置</div>
+      <div class="sg"><label>后台并发任务数量 (1-20)</label><input type="number" id="cfgConcurrency" min="1" max="20" value="3"></div>
+      <div class="sg" style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <label style="margin:0">另存为加时间戳</label>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;margin:0"><input type="checkbox" id="cfgTimestamp" style="opacity:0;width:0;height:0" onchange="syncUI('cfgTimestamp','tsTrack','tsKnob')"><span id="tsTrack" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span><span id="tsKnob" style="position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.3s"></span></label>
+      </div>
+      <div class="sr">
+        <button onclick="saveSettings()">💾 保存设置</button>
+        <button onclick="retryAllFailed()">🔄 后台重查失败词</button>
+        <button onclick="exportJson()">📤 导出JSON</button>
+        <button onclick="document.getElementById('jsonFileInput').click()">📂 导入JSON</button>
+        <button onclick="saveFile()">💾 另存本地网页</button>
+        <button class="dg" onclick="clearAll()">🗑 清空词库数据</button>
+      </div>
+
+      <div class="sg" style="margin-top:24px; border-top:1px dashed var(--border); padding-top:14px">
+        <label>运行日志</label>
+        <div class="lb" id="logBox"></div>
+        <div class="sr" style="margin-top:6px"><button onclick="clearLog()">清空日志</button></div>
+      </div>
+    </div>
+
+    <div id="st-task" class="tab-content">
+      <div class="sr" style="margin-bottom:18px">
+        <button id="btnPause" onclick="TaskManager.togglePause()" style="flex:1">⏸ 暂停处理</button>
+        <button class="dg" onclick="TaskManager.clear()" style="flex:1">🗑 清空排队</button>
+      </div>
+      <div class="sg"><label>处理中 (<span id="tkProcCount">0</span> / <span id="tkLimit">3</span>)</label><div id="tkProcList" style="max-height:160px;overflow-y:auto;border:1px dashed var(--border);padding:8px;border-radius:6px;background:#faf9f7"><div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:10px">空闲中</div></div></div>
+      <div class="sg"><label>排队 (<span id="tkWaitCount">0</span>)</label><div id="tkWaitList" style="max-height:280px;overflow-y:auto;border:1px dashed var(--border);padding:8px;border-radius:6px;background:#faf9f7"><div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:10px">无排队任务</div></div></div>
+    </div>
+
+    <div id="st-recite" class="tab-content">
+      <div style="background:#e3f2fd; padding:10px; border-radius:8px; font-size:0.8rem; color:#1565c0; margin-bottom:14px; line-height:1.5;">
+        <strong>📈 艾宾浩斯记忆周期：</strong><br>
+        L0(新词/今日) → L1(1天后) → L2(2天后) → L3(4天后) → L4(7天后) → L5(15天后) → L6(30天后) → L7(🎓掌握)
+      </div>
+      
+      <div class="sg" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <label style="margin:0">第一遍拼对后自动移出错题本</label>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;margin:0"><input type="checkbox" id="cfgRRemWr" style="opacity:0;width:0;height:0" onchange="syncUI('cfgRRemWr','rwTrack','rwKnob')"><span id="rwTrack" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span><span id="rwKnob" style="position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.3s"></span></label>
+      </div>
+      <div class="sg" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <label style="margin:0">拼错后必须重新正确拼写一遍</label>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;margin:0"><input type="checkbox" id="cfgRForceRewrite" style="opacity:0;width:0;height:0" onchange="syncUI('cfgRForceRewrite','frTrack','frKnob')"><span id="frTrack" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span><span id="frKnob" style="position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.3s"></span></label>
+      </div>
+      <div class="sg" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <label style="margin:0">测试时显示中文释义</label>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;margin:0"><input type="checkbox" id="cfgRShowMeaning" style="opacity:0;width:0;height:0" onchange="syncUI('cfgRShowMeaning','smTrack','smKnob')"><span id="smTrack" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span><span id="smKnob" style="position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.3s"></span></label>
+      </div>
+      <div class="sg" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <label style="margin:0">测试时显示音标</label>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;margin:0"><input type="checkbox" id="cfgRShowPhonetic" style="opacity:0;width:0;height:0" onchange="syncUI('cfgRShowPhonetic','spTrack','spKnob')"><span id="spTrack" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span><span id="spKnob" style="position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.3s"></span></label>
+      </div>
+
+      <div class="sg" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <label style="margin:0">开启拼写挖空提示</label>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;margin:0"><input type="checkbox" id="cfgRHint" style="opacity:0;width:0;height:0" onchange="syncUI('cfgRHint','hintTrack','hintKnob'); document.getElementById('hintWrap').style.display=this.checked?'block':'none'"><span id="hintTrack" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span><span id="hintKnob" style="position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.3s"></span></label>
+      </div>
+      <div class="sg" id="hintWrap" style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:14px">
+        <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--muted); margin-bottom:4px"><span>提示字母显示比例</span><span id="hintPctLbl">40%</span></div>
+        <input type="range" id="cfgRHintPct" min="10" max="90" step="10" value="40" oninput="document.getElementById('hintPctLbl').textContent=this.value+'%'" style="width:100%; accent-color:var(--pl)">
+      </div>
+
+      <div class="sg"><label>自动发音模式</label><select id="cfgRPronounce"><option value="0">🔇 不发音</option><option value="1">🔊 仅发音一次</option><option value="2">🔁 持续循环发音 (间隔3秒)</option></select></div>
+      <div class="sg" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px; margin-top:14px">
+        <label style="margin:0">拼对或拼错后自动发音</label>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;margin:0"><input type="checkbox" id="cfgRAnsPronounce" style="opacity:0;width:0;height:0" onchange="syncUI('cfgRAnsPronounce','rapTrack','rapKnob')"><span id="rapTrack" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span><span id="rapKnob" style="position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.3s"></span></label>
+      </div>
+      <div class="sg"><label>拼错后的记忆周期惩罚</label><select id="cfgRPunish"><option value="stagnate">停滞 (当前等级不变，明天强制复习)</option><option value="downgrade">降级 (退回上一周期级别)</option><option value="reset">重置严苛 (直接退回L0新词状态)</option></select></div>
+      
+      <div class="sg" style="margin-top:20px; border-top:1px dashed var(--border); padding-top:14px">
+        <label>拼写完成后显示的答案内容 (自由搭配)</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">
+          <label style="display:inline-flex;align-items:center;font-weight:normal"><input type="checkbox" id="cfgAnsMean" style="width:auto;margin-right:4px"> 释义</label>
+          <label style="display:inline-flex;align-items:center;font-weight:normal"><input type="checkbox" id="cfgAnsPhr" style="width:auto;margin-right:4px"> 短语</label>
+          <label style="display:inline-flex;align-items:center;font-weight:normal"><input type="checkbox" id="cfgAnsInf" style="width:auto;margin-right:4px"> 变形</label>
+          <label style="display:inline-flex;align-items:center;font-weight:normal"><input type="checkbox" id="cfgAnsEx" style="width:auto;margin-right:4px"> 例句</label>
+          <label style="display:inline-flex;align-items:center;font-weight:normal"><input type="checkbox" id="cfgAnsMne" style="width:auto;margin-right:4px"> 助记</label>
+          <label style="display:inline-flex;align-items:center;font-weight:normal"><input type="checkbox" id="cfgAnsNote" style="width:auto;margin-right:4px"> 笔记</label>
+        </div>
+      </div>
+
+      <div class="sr" style="margin-top:30px">
+        <button onclick="saveSettings()" style="flex:1">💾 保存设置</button>
+        <button class="dg" onclick="resetAllEbbinghaus()" style="flex:1">⚠️ 周期全面重置</button>
+      </div>
+    </div>
+    
+    <div id="st-memo" class="tab-content">
+      <div class="sg">
+        <textarea id="cfgMemo" style="min-height:350px; font-size:0.9rem; width:100%; padding:12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); resize:vertical; outline:none" placeholder="在这里记录一些学习心得、复习计划或容易混淆的词根词缀... (随单词数据一起保存)"></textarea>
+      </div>
+      <div class="sr" style="margin-top:14px"><button onclick="saveSettings()" style="flex:1">💾 保存备忘录</button></div>
+    </div>
+
+  </div>
+</div></div>
+
+<div class="mo" id="editModal"><div class="md">
+  <div class="mh"><h2>编辑属性 & 笔记</h2><button class="mc" onclick="closeModal('editModal')">×</button></div>
+  <div class="mb" id="editBody"></div>
+</div></div>
+
+<div class="mo" id="testModal" style="z-index:300"><div class="md" style="border-radius:0; max-width:100%; height:100%; max-height:100vh; margin:0; border:none">
+  <div class="test-top">
+    <div style="font-weight:700; color:var(--primary)">🧠 拼写测验 <span id="testProgText" style="font-weight:normal; font-size:.85rem; color:var(--muted); margin-left:8px">(0/0)</span></div>
+    <div class="test-prog-wrap"><div class="test-prog-fill" id="testProgFill"></div></div>
+    <button class="mc" onclick="confirmExitTest()">×</button>
+  </div>
+  <div class="test-main">
+    <div class="test-meaning" id="tmMeaning"></div>
+    <div class="test-phonetic" id="tmPhonetic"></div>
+    <div class="test-word-hint" id="tmHint"></div>
+    <input type="text" class="test-input" id="tmInput" autocomplete="off" spellcheck="false" placeholder="输入拼写...">
+    
+    <div class="test-ans-box" id="tmAnsBox">
+      <div class="ca" id="tmCorrectAns"></div>
+      <p>❌ 拼错啦！请照着上方正确拼写再打一遍</p>
+    </div>
+
+    <div class="test-acts">
+      <button class="test-btn-ans" id="btnShowAns" onclick="testGiveUp()">👀 看答案 (Enter)</button>
+      <button id="btnNextWord" style="display:none; background:var(--green); color:#fff; box-shadow:0 2px 8px rgba(39,174,96,0.3);" onclick="testNextBtn()">✅ 进入下一个 ➡️ (Enter)</button>
+      <button onclick="testPlayAudio(true)" style="background:var(--bg); border:1px solid var(--border); color:var(--text);">🔊 朗读</button>
+    </div>
+
+    <div class="test-full-anno" id="tmFullAnno"></div>
+  </div>
+</div></div>
+
+<div id="wordPopup" class="word-popup">
+  <div class="wp-header"><span id="wpWord">Word</span><button class="mc" style="color:#fff;font-size:1.2rem;opacity:0.8" onclick="hideWordPopup()">×</button></div>
+  <div class="wp-body" id="wpBody">加载中...</div>
+  <div class="wp-footer">
+     <button class="wp-btn" id="wpBtnAudio">🔊 发音</button>
+     <button class="wp-btn import" id="wpBtnImport">📥 导入</button>
+     <button class="wp-btn search" id="wpBtnSearch" style="display:none">🔍 查询</button>
+  </div>
+</div>
+
+<script id="embedded-data" type="application/json">{"words":[],"config":{}}</script>
+<script>
+// =====================================================
+// CORE STATE & EBBINGHAUS (降级为var防跨设备打开时的TDZ报错，并彻底移除顶层危险的JSON.parse)
+// =====================================================
+var DEFAULT_PROMPT = `你是一个专业的英语词汇学习助手。请为以下英语单词/短语提供详细的学习注释。
+
+单词: {word}
+
+请严格按照以下JSON格式返回，不要包含任何其他内容：
+{
+  "phonetic": "英式音标 / 美式音标",
+  "pos": "词性（如 n. / v. / adj. 等）",
+  "meaning": "中文释义（按词性分类，简洁明了）",
+  "phrases": "2-3个常见短语搭配及中文翻译，用分号分隔（若无则写\"无\"）",
+  "inflections": "词形变化：过去式、过去分词、现在分词、复数、比较级等（若无则写\"无\"）",
+  "examples": "2个实用例句，每句附中文翻译，用序号标注",
+  "mnemonics": "助记方法（可使用谐音、联想、词根词缀分析等，要生动有趣便于记忆）"
+}`;
+
+var DEFAULT_QUERY_PROMPT = `请给出单词 {word} 的音标和中文释义，格式：\n音标：...\n释义：...\n简洁输出即可。`;
+
+var DEFAULT_P_PROMPT = `你是一个资深的英语教学专家。请对用户提供的英文段落进行专业、深度的逐句解析。\n请严格按照以下格式输出，不要使用复杂的Markdown格式（如表格或井号标题），直接使用换行和括号排版：\n\n【段落大意】\n（用1-2句中文简练总结整段话的核心意思）\n\n【逐句解析】\n1. 原句：(英文原句)\n   翻译：(精准、地道的中文翻译)\n   语法：(简要分析主谓宾、从句、时态等核心语法结构)\n   亮点：(提取句中的高级词汇、短语搭配或特殊句式，并给出简短解释。如果没有则写“无”)\n\n2. 原句：(下一句...)\n   ...\n\n【学习建议】\n（根据这段话的难度，给出1-2条阅读或词汇记忆的建议）\n\n以下是需要解析的段落：\n{text}`;
+
+var DEFAULT_F_PROMPT = `用户正在阅读英语句子："{sent}"。\n用户的疑问是："{question}"。\n请用中文简短、专业地解答，直接给出解析，不要客套。`;
+
+// L0=0天(当日), L1=1天后, L2=2天后...
+var EB_DAYS = [0, 1, 2, 4, 7, 15, 30, 999]; 
+
+var words = [];
+var config = {};
+var dirty = false;
+var allShown = false;
+var editingId = null;
+var logs = [];
+var fileHandle = null;
+var lastSaveTime = '';
+var displayMode = 'word'; 
+var selectMode = false;
+var reciteMode = false; 
+var selected = new Set();
+var collapsedDays = new Set();
+var rangeState = 0;
+var rangeStartId = null;
+var lastClickedId = null; 
+
+// ====== 并发控制流ID ======
+var paraExecId = 0;
+var fuExecId = 0;
+var currentWordPopupId = 0;
+var lastWordPopupTime = 0; // 防抖时间锁
+
+// 统一过滤状态
+var fState = { today: false, wrong: false, none: false, stMin: 0, stMax: 5, ebMin: 0, ebMax: 7 };
+
+function applyUISize(size) {
+  const map = { 'xs': 0.75, 's': 0.85, 'm': 1, 'l': 1.15 };
+  document.documentElement.style.setProperty('--us', map[size] || 1);
+}
+
+function loadEmbedded() {
+  try {
+    const rawData = document.getElementById('embedded-data').textContent;
+    if(!rawData) return;
+    const d = JSON.parse(rawData);
+    words = d.words || [];
+    words.forEach(w => {
+      if (w.wrongCount === undefined) w.wrongCount = 0;
+      if (w.note === undefined) w.note = ""; 
+    });
+
+    config = {
+      apiUrl: d.config?.apiUrl || '', apiKey: d.config?.apiKey || '', modelId: d.config?.modelId || '', prompt: d.config?.prompt || DEFAULT_PROMPT,
+      qApiUrl: d.config?.qApiUrl || '', qApiKey: d.config?.qApiKey || '', qModelId: d.config?.qModelId || '', qPrompt: d.config?.qPrompt || DEFAULT_QUERY_PROMPT,
+      pPrompt: d.config?.pPrompt || DEFAULT_P_PROMPT, fPrompt: d.config?.fPrompt || DEFAULT_F_PROMPT,
+      binId: d.config?.binId || '', binKey: d.config?.binKey || '',
+      timestamp: !!d.config?.timestamp, concurrencyLimit: d.config?.concurrencyLimit || 3, autoPronounce: d.config?.autoPronounce !== false,
+      reciteShowMeaning: d.config?.reciteShowMeaning !== false, 
+      reciteShowPhonetic: d.config?.reciteShowPhonetic !== false, 
+      recitePronounce: d.config?.recitePronounce || "1", reciteHint: d.config?.reciteHint !== false, recitePunish: d.config?.recitePunish || "stagnate",
+      reciteRemoveWrong: d.config?.reciteRemoveWrong !== false, reciteHintPct: d.config?.reciteHintPct !== undefined ? d.config.reciteHintPct : 50,
+      reciteForceRewrite: d.config?.reciteForceRewrite !== false, recitePronounceAns: d.config?.recitePronounceAns !== false, globalMemo: d.config?.globalMemo || "",
+      uiSize: d.config?.uiSize || 'm',
+      showBadgeStar: d.config?.showBadgeStar !== false,
+      showBadgeLevel: d.config?.showBadgeLevel !== false,
+      showBadgeReview: d.config?.showBadgeReview !== false,
+      showBadgeWrong: d.config?.showBadgeWrong !== false,
+      showBadgeNote: d.config?.showBadgeNote !== false,
+      showBadgeTimeLeft: !!d.config?.showBadgeTimeLeft,
+      ansShowMeaning: d.config?.ansShowMeaning !== false,
+      ansShowPhrases: d.config?.ansShowPhrases !== false,
+      ansShowInflections: d.config?.ansShowInflections !== false,
+      ansShowExamples: d.config?.ansShowExamples !== false,
+      ansShowMnemonics: d.config?.ansShowMnemonics !== false,
+      ansShowNote: d.config?.ansShowNote !== false,
+    };
+    
+    // 安全策略：强制从本地浏览器 localStorage 提取密钥填充，而不是依赖 embedded-data
+    config.apiKey = localStorage.getItem('vocab_apiKey') || config.apiKey || '';
+    config.qApiKey = localStorage.getItem('vocab_qApiKey') || config.qApiKey || '';
+    config.binId = localStorage.getItem('vocab_binId') || config.binId || '';
+    config.binKey = localStorage.getItem('vocab_binKey') || config.binKey || '';
+    
+    applyUISize(config.uiSize);
+    lastSaveTime = d.lastSaveTime || '';
+  } catch(e) { log('读取嵌入数据失败: '+e.message); }
+}
+
+function calcNextDate(level) {
+  if (level >= EB_DAYS.length - 1) return '2099-12-31';
+  const d = new Date(); d.setDate(d.getDate() + EB_DAYS[level]);
+  return d.toISOString().slice(0,10);
+}
+
+// =====================================================
+// UNIFIED FILTER LOGIC
+// =====================================================
+function openFilterModal() {
+  document.getElementById('f-today').checked = fState.today;
+  document.getElementById('f-wrong').checked = fState.wrong;
+  document.getElementById('f-none').checked = fState.none;
+  document.getElementById('f-st-min').value = fState.stMin;
+  document.getElementById('f-st-max').value = fState.stMax;
+  document.getElementById('f-eb-min').value = fState.ebMin;
+  document.getElementById('f-eb-max').value = fState.ebMax;
+  updateFilterUI();
+  document.getElementById('filterModal').classList.add('show');
+}
+
+function updateFilterUI() {
+  let sMin = parseInt(document.getElementById('f-st-min').value);
+  let sMax = parseInt(document.getElementById('f-st-max').value);
+  if(sMin > sMax) { let t=sMin; sMin=sMax; sMax=t; }
+  document.getElementById('f-st-fill').style.left = (sMin/5*100) + '%';
+  document.getElementById('f-st-fill').style.width = ((sMax-sMin)/5*100) + '%';
+  document.getElementById('f-st-lbl').textContent = `${sMin} - ${sMax}★`;
+
+  let eMin = parseInt(document.getElementById('f-eb-min').value);
+  let eMax = parseInt(document.getElementById('f-eb-max').value);
+  if(eMin > eMax) { let t=eMin; eMin=eMax; eMax=t; }
+  document.getElementById('f-eb-fill').style.left = (eMin/7*100) + '%';
+  document.getElementById('f-eb-fill').style.width = ((eMax-eMin)/7*100) + '%';
+  document.getElementById('f-eb-lbl').textContent = `L${eMin} - L${eMax}`;
+}
+
+function applyFilter() {
+  fState.today = document.getElementById('f-today').checked;
+  fState.wrong = document.getElementById('f-wrong').checked;
+  fState.none = document.getElementById('f-none').checked;
+  
+  let sMin = parseInt(document.getElementById('f-st-min').value);
+  let sMax = parseInt(document.getElementById('f-st-max').value);
+  if(sMin > sMax) { let t=sMin; sMin=sMax; sMax=t; }
+  fState.stMin = sMin; fState.stMax = sMax;
+
+  let eMin = parseInt(document.getElementById('f-eb-min').value);
+  let eMax = parseInt(document.getElementById('f-eb-max').value);
+  if(eMin > eMax) { let t=eMin; eMin=eMax; eMax=t; }
+  fState.ebMin = eMin; fState.ebMax = eMax;
+
+  closeModal('filterModal');
+  renderWords();
+}
+
+function resetFilter() {
+  fState = { today: false, wrong: false, none: false, stMin: 0, stMax: 5, ebMin: 0, ebMax: 7 };
+  openFilterModal();
+}
+
+// =====================================================
+// TASK MANAGER & LOGGING
+// =====================================================
+const TaskManager = {
+  queue: [], processing: [], isPaused: false,
+  add(tasks) { this.queue.push(...tasks); this.render(); this.pump(); },
+  async pump() {
+    if (this.isPaused) return;
+    while (this.processing.length < config.concurrencyLimit && this.queue.length > 0) {
+      const task = this.queue.shift(); this.processing.push(task); this.render();
+      task.fn().finally(() => { this.processing = this.processing.filter(t => t.id !== task.id); this.render(); this.pump(); });
+    }
+  },
+  togglePause() {
+    this.isPaused = !this.isPaused;
+    document.getElementById('btnPause').innerHTML = this.isPaused ? '▶️ 继续处理' : '⏸ 暂停处理';
+    document.getElementById('btnPause').style.background = this.isPaused ? 'var(--green)' : ''; document.getElementById('btnPause').style.color = this.isPaused ? '#fff' : '';
+    if (!this.isPaused) this.pump(); this.render();
+  },
+  clear() {
+    if (this.queue.length === 0) return toast('排队已经是空的');
+    if (!confirm(`确定要清空排队中的 ${this.queue.length} 个任务吗？`)) return;
+    this.queue.forEach(t => {
+      if (t.type === 'query' && t.card) { t.card.className = 'sq-card'; t.card.innerHTML = `<div class="sq-word">${esc(t.word)}</div><div style="color:var(--muted);font-size:.85rem">⛔ 已取消</div>`; }
+      else if ((t.type === 'import' || t.type === 'retry') && t.entry && t.entry.status === 'loading') { t.entry.status = 'error'; }
+    });
+    this.queue = []; this.render(); markDirty(); renderWords(); toast('✅ 已清空'); log('手动清空了排队任务');
+  },
+  render() {
+    const p = this.processing.length, w = this.queue.length, tot = p + w;
+    document.getElementById('tkProcCount').textContent = p; document.getElementById('tkWaitCount').textContent = w; document.getElementById('tkLimit').textContent = config.concurrencyLimit;
+    const bdg = document.getElementById('tabQCount'); if (tot > 0) { bdg.style.display = 'inline-block'; bdg.textContent = tot; } else { bdg.style.display = 'none'; }
+    document.getElementById('tkProcList').innerHTML = p === 0 ? '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:10px">空闲中</div>' : this.processing.map(t => this.renderItem(t)).join('');
+    document.getElementById('tkWaitList').innerHTML = w === 0 ? '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:10px">无排队</div>' : this.queue.map(t => this.renderItem(t)).join('');
+    const gProg = document.getElementById('globalProgress'), gText = document.getElementById('globalProgressText');
+    if (tot > 0) { gProg.style.display = 'block'; gText.textContent = `${this.isPaused ? '(已暂停) ' : ''}后台任务：${p} 处理中，${w} 排队中`; } else { gProg.style.display = 'none'; }
+  },
+  renderItem(t) { return `<div class="tk-item"><span class="tk-word">${esc(t.word)}</span><span class="tk-type ${t.type==='import'?'import':t.type==='retry'?'retry':'query'}">${t.type==='import'?'📥 导入':t.type==='retry'?'🔄 重试':'🔍 查询'}</span></div>`; }
+};
+
+function log(msg) { 
+  const ts = new Date().toLocaleTimeString(); 
+  logs.push(`[${ts}] ${msg}`); 
+  if (logs.length > 500) logs = logs.slice(-300); 
+  const box = document.getElementById('logBox'); 
+  if (box) { box.textContent = logs.join('\n'); box.scrollTop = box.scrollHeight; } 
+  console.log(`[Vocab] ${msg}`); 
+}
+function clearLog() { logs = []; document.getElementById('logBox').textContent = ''; }
+
+// =====================================================
+// SECURITY HELPERS (拦截密钥序列化)
+// =====================================================
+function getSafeConfig() {
+  const sc = { ...config };
+  sc.apiKey = '';
+  sc.qApiKey = '';
+  sc.binId = '';
+  sc.binKey = '';
+  return sc;
+}
+
+// =====================================================
+// CLOUD SYNC & FILE I/O
+// =====================================================
+function getFullHTML() {
+  const data = JSON.stringify({ words, config: getSafeConfig(), lastSaveTime }); const html = document.documentElement.outerHTML;
+  const re = /(<script id="embedded-data" type="application\/json">)([\s\S]*?)(<\/script>)/;
+  return '<!DOCTYPE html>\n<html lang="zh-CN">' + html.slice(html.indexOf('<head>')).replace(re, function(match, p1, p2, p3) { 
+      return p1 + data + p3; 
+  });
+}
+function getTimestamp() { const d = new Date(); return `${d.getFullYear()%100}_${d.getMonth()+1}_${d.getDate()}_${d.getHours()}_${String(d.getMinutes()).padStart(2,'0')}`; }
+async function saveFile() {
+  lastSaveTime = fmtNow(); const fullHtml = getFullHTML(); const useTs = config.timestamp;
+  if (useTs) {
+    const tsName = `词汇学习助手_${getTimestamp()}.html`;
+    if (window.showSaveFilePicker) { try { const handle = await window.showSaveFilePicker({ suggestedName: tsName, types: [{ description: 'HTML', accept: { 'text/html': ['.html'] } }] }); const writable = await handle.createWritable(); await writable.write(fullHtml); await writable.close(); markClean(); toast('✅ 已另存为'); log(`另存为: ${tsName}`); return; } catch (e) { if (e.name === 'AbortError') return; } }
+    dlFile(fullHtml, tsName);
+  } else {
+    if (window.showSaveFilePicker) { try { if (!fileHandle) fileHandle = await window.showSaveFilePicker({ suggestedName: '词汇学习助手.html', types: [{ description: 'HTML', accept: { 'text/html': ['.html'] } }] }); const writable = await fileHandle.createWritable(); await writable.write(fullHtml); await writable.close(); markClean(); toast('✅ 已保存'); log('文件已覆盖保存'); return; } catch (e) { if (e.name === 'AbortError') return; } }
+    dlFile(fullHtml, '词汇学习助手.html');
+  }
+}
+function dlFile(content, name) { const blob = new Blob([content], { type: 'text/html;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url); markClean(); toast('✅ 已下载'); log(`下载: ${name}`); }
+function markDirty() { dirty = true; document.getElementById('dirtyDot').classList.add('on'); }
+function markClean() { dirty = false; document.getElementById('dirtyDot').classList.remove('on'); document.getElementById('lastSaveTime').textContent = lastSaveTime; }
+window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+function openCloudSync() { document.getElementById('cloudSyncModal').classList.add('show'); }
+
+async function doCloudUpload() {
+  if(!config.binId || !config.binKey) return toast('请先在设置中配置 JSONBin ID 和密钥');
+  const gProg = document.getElementById('globalProgress'), gText = document.getElementById('globalProgressText');
+  gProg.style.display = 'block'; gText.textContent = '正在上传到云端...';
+  try {
+      const payload = { words, config: getSafeConfig(), lastSaveTime: fmtNow() };
+      const resp = await fetch(`https://api.jsonbin.io/v3/b/${config.binId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'X-Master-Key': config.binKey },
+          body: JSON.stringify(payload)
+      });
+      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      toast('✅ 云端上传成功'); log('云端上传成功');
+      markClean(); lastSaveTime = fmtNow(); document.getElementById('lastSaveTime').textContent = lastSaveTime;
+      closeModal('cloudSyncModal');
+  } catch(e) {
+      toast('❌ 上传失败: ' + e.message); log('上传失败: ' + e.message);
+  } finally {
+      if(TaskManager.processing.length===0 && TaskManager.queue.length===0) gProg.style.display = 'none'; else TaskManager.render();
+  }
+}
+
+async function doCloudDownload() {
+  if(!config.binId || !config.binKey) return toast('请先在设置中配置 JSONBin ID 和密钥');
+  if(!confirm('下载将覆盖本地所有词汇和设置，确定继续吗？')) return;
+  const gProg = document.getElementById('globalProgress'), gText = document.getElementById('globalProgressText');
+  gProg.style.display = 'block'; gText.textContent = '正在从云端下载...';
+  try {
+      const resp = await fetch(`https://api.jsonbin.io/v3/b/${config.binId}/latest`, {
+          headers: { 'X-Master-Key': config.binKey }
+      });
+      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      if(!data.record || !data.record.words) throw new Error('云端数据格式错误');
+      words = data.record.words;
+      if(data.record.config) {
+          let c = data.record.config;
+          // 防止覆盖本地已填好的密钥
+          c.apiKey = config.apiKey;
+          c.qApiKey = config.qApiKey;
+          c.binId = config.binId;
+          c.binKey = config.binKey;
+          config = { ...config, ...c };
+          applyUISize(config.uiSize || 'm');
+      }
+      lastSaveTime = data.record.lastSaveTime || fmtNow();
+      markDirty();
+      renderWords();
+      toast('✅ 从云端下载成功'); log(`从云端下载了 ${words.length} 个单词`);
+      closeModal('cloudSyncModal');
+  } catch(e) {
+      toast('❌ 下载失败: ' + e.message); log('下载失败: ' + e.message);
+  } finally {
+       if(TaskManager.processing.length===0 && TaskManager.queue.length===0) gProg.style.display = 'none'; else TaskManager.render();
+  }
+}
+
+// =====================================================
+// AI API CALLS
+// =====================================================
+async function quickTest(url, key, model) { 
+  const isResp = url.includes('/responses'); 
+  const body = isResp ? { model, input: [{ role:'user', content:'hello' }] } : { model, messages: [{ role:'user', content:'hello' }] }; 
+  const resp = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+key }, body: JSON.stringify(body) }); 
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`); 
+  return await resp.json(); 
+}
+
+async function testImportApi() { 
+  const r=document.getElementById('testResultImport'); r.innerHTML='<div class="tr" style="background:#e3f2fd;color:#1565c0">测试导入 API 中...</div>'; 
+  saveSettings(); 
+  try { await quickTest(config.apiUrl, config.apiKey, config.modelId); r.innerHTML='<div class="tr ok">✅ 连接成功</div>'; log('导入 API 测试成功'); } 
+  catch(e) { r.innerHTML=`<div class="tr no">❌ ${esc(e.message)}</div>`; log(`导入 API 测试失败: ${e.message}`); } 
+}
+
+async function testQueryApi() { 
+  const r=document.getElementById('testResultQuery'); r.innerHTML='<div class="tr" style="background:#e3f2fd;color:#1565c0">测试查询 API 中...</div>'; 
+  saveSettings(); 
+  try { await quickTest(config.qApiUrl, config.qApiKey, config.qModelId); r.innerHTML='<div class="tr ok">✅ 连接成功</div>'; log('查询 API 测试成功'); } 
+  catch(e) { r.innerHTML=`<div class="tr no">❌ ${esc(e.message)}</div>`; log(`查询 API 测试失败: ${e.message}`); } 
+}
+
+async function callAI(word) {
+  const prompt = config.prompt.replace(/\{word\}/g, word); const url = config.apiUrl; const isResp = url.includes('/responses');
+  const body = isResp ? { model: config.modelId, input: [{ role: 'user', content: prompt }] } : { model: config.modelId, messages: [{ role: 'user', content: prompt }], temperature: 0.3 };
+  log(`→ API 请求 [${word}]`);
+  const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.apiKey }, body: JSON.stringify(body) });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`); const data = await resp.json();
+  let text = '';
+  if (Array.isArray(data.output)) { for (const item of data.output) { if (item.content && Array.isArray(item.content)) { for (const b of item.content) if (b.type === 'output_text' || b.type === 'text') text += b.text; } else if (item.type === 'output_text' || item.type === 'text') text += item.text; } } else if (data.output && data.output.content) { for (const b of data.output.content) if (b.type === 'output_text' || b.type === 'text') text += b.text; } else if (data.choices?.[0]) text = data.choices[0].message?.content || data.choices[0].text || ''; else if (typeof data.output === 'string') text = data.output; else if (data.result) text = typeof data.result === 'string' ? data.result : JSON.stringify(data.result);
+  if (!text) throw new Error('无法提取API返回文本');
+  text = text.trim().replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim(); const p = JSON.parse(text);
+  return { phonetic:p.phonetic||'', pos:p.pos||'', meaning:p.meaning||'', phrases:p.phrases||'无', inflections:p.inflections||'无', examples:p.examples||'', mnemonics:p.mnemonics||'' };
+}
+async function callAIStream(word, onChunk) {
+  const prompt = config.qPrompt.replace(/\{word\}/g, word); const url = config.qApiUrl; const isResp = url.includes('/responses');
+  const body = isResp ? { model: config.qModelId, input: [{ role: 'user', content: prompt }], stream: true } : { model: config.qModelId, messages: [{ role: 'user', content: prompt }], temperature: 0.3, stream: true };
+  const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.qApiKey }, body: JSON.stringify(body) });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const reader = resp.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read(); if (done) break;
+    buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop(); 
+    for (const line of lines) { const trimmed = line.trim(); if (!trimmed || trimmed.startsWith('event:') || trimmed === 'data: [DONE]') continue; if (trimmed.startsWith('data:')) { const jsonStr = trimmed.slice(5).trim(); if (!jsonStr || jsonStr === '[DONE]') continue; try { const evt = JSON.parse(jsonStr); if (evt.type === 'response.output_text.delta' && evt.delta) onChunk(evt.delta); else if (evt.choices?.[0]?.delta?.content) onChunk(evt.choices[0].delta.content); } catch(e) {} } }
+  }
+}
+
+// =====================================================
+// IMPORT & QUERY ACTIONS
+// =====================================================
+function openImport() { document.getElementById('importModal').classList.add('show'); }
+function clearStream() { document.getElementById('streamBox').innerHTML=''; streamedWords.clear(); }
+let streamedWords = new Set(); 
+function getStreamedWords() { streamedWords.clear(); document.querySelectorAll('#streamBox [data-word]').forEach(el => streamedWords.add(el.getAttribute('data-word').toLowerCase())); return streamedWords; }
+function getInputWords() { const text = document.getElementById('importText').value.trim(); return !text ? [] : text.split('\n').map(w=>w.trim()).filter(w=>w); }
+function renderStreamCard(word, annotation) {
+  const e = esc, j = jsEsc(word);
+  return `<div class="sq-card" data-word="${e(word)}"><div class="sq-word">${e(word)} <button onclick="speakDirect('${j}',2)" style="font-size:calc(.75rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🔊</button></div><div class="sq-row"><span class="sq-phonetic">${e(annotation.phonetic)}</span><span class="sq-pos">${e(annotation.pos)}</span></div><div class="sq-row"><span class="sq-label">释义</span><span class="sq-val">${e(annotation.meaning)}</span></div><div class="sq-row"><span class="sq-label">短语</span><span class="sq-val">${e(annotation.phrases)}</span></div><div class="sq-row"><span class="sq-label">变形</span><span class="sq-val">${e(annotation.inflections)}</span></div><div class="sq-section"><div class="sq-row"><span class="sq-label">例句</span><span class="sq-val">${e(annotation.examples).replace(/\n/g,'<br>')}</span></div></div><div class="sq-section"><div class="sq-row"><span class="sq-label">助记</span><span class="sq-val">${e(annotation.mnemonics)}</span></div></div></div>`;
+}
+
+function doQuery() {
+  const items = getInputWords(); if (!items.length) return;
+  const area = document.getElementById('streamArea'); const box = document.getElementById('streamBox'); area.style.display = 'block';
+  getStreamedWords(); const toQuery = items.filter(w => !streamedWords.has(w.toLowerCase())); const skipped = items.length - toQuery.length;
+  if (skipped) { toast(`跳过 ${skipped} 个已查询`); } if (!toQuery.length) return;
+  const tasks = toQuery.map((word) => {
+    const card = document.createElement('div'); card.className = 'sq-loading'; card.setAttribute('data-word', word); card.innerHTML = `<div class="sq-word">${esc(word)}</div><div class="sq-live" style="font-family:var(--fm);font-size:.78rem;color:var(--muted)">排队中...</div>`; box.appendChild(card);
+    return { id: gid(), word, type: 'query', card, fn: async () => {
+        log(`开始流式查询: ${word}`);
+        streamedWords.add(word.toLowerCase()); const liveEl = card.querySelector('.sq-live'); liveEl.textContent = ''; let fullText = '';
+        try { await callAIStream(word, (chunk) => { fullText += chunk; liveEl.innerHTML = esc(fullText) + '<span class="sq-cursor"></span>'; box.scrollTop = box.scrollHeight; });
+          let cleaned = fullText.trim().replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+          try { const p = JSON.parse(cleaned); const anno = { phonetic:p.phonetic||'', pos:p.pos||'', meaning:p.meaning||'', phrases:p.phrases||'无', inflections:p.inflections||'无', examples:p.examples||'', mnemonics:p.mnemonics||'' }; card.className = ''; card.innerHTML = renderStreamCard(word, anno); }
+          catch(pe) { card.className = 'sq-card'; card.setAttribute('data-word', word); card.innerHTML = `<div class="sq-word">${esc(word)} <button onclick="speakDirect('${jsEsc(word)}',2)" style="font-size:calc(.75rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🔊</button></div><div style="font-size:.88rem;line-height:1.7;color:var(--text);white-space:pre-wrap">${esc(fullText.trim())}</div>`; }
+          log(`✅ 流式查询完成: ${word}`);
+          if (config.autoPronounce) speakDirect(word, 2);
+        } catch(e) { card.className = 'sq-card'; card.setAttribute('data-word', word); card.innerHTML = `<div class="sq-word">${esc(word)}</div><div style="color:var(--red);font-size:.85rem">❌ ${esc(e.message)}</div>`; log(`❌ 流式查询失败 [${word}]: ${e.message}`);}
+      }
+    };
+  });
+  box.scrollTop = box.scrollHeight; TaskManager.add(tasks); toast(`已加入 ${tasks.length} 个查询`);
+}
+
+function doImportWords() {
+  const items = getInputWords(); if (!items.length) return;
+  const existing = new Set(words.map(w=>w.word.toLowerCase())); const unique = items.filter(w=>!existing.has(w.toLowerCase()));
+  if (!unique.length) { toast('均已存在'); return; }
+  document.getElementById('importText').value = ''; const today = fmtNow().slice(0,10);
+  const entries = unique.map(w => { const entry = { id:gid(), word:w, date:today, stars:0, annotation:null, status:'loading', showAnno:false, ebLevel:0, nextReviewDate:today, wrongCount:0, note:'' }; words.push(entry); return entry; }); renderWords();
+  const tasks = entries.map(entry => ({
+    id: gid(), word: entry.word, type: 'import', entry, fn: async () => {
+      try { entry.annotation = await callAI(entry.word); entry.status = 'loaded'; log(`✅ 导入成功: ${entry.word}`); } catch(e) { entry.status = 'error'; log(`❌ 导入失败 [${entry.word}]: ${e.message}`); } markDirty(); renderWords();
+    }
+  }));
+  TaskManager.add(tasks); toast(`已排队导入 ${unique.length} 个`); setTimeout(()=>closeModal('importModal'), 400);
+}
+
+// ==== 段落解析相关 ====
+function switchImpTab(id, el) {
+  document.querySelectorAll('.imp-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.imp-pane').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active'); document.getElementById(id).classList.add('active');
+}
+
+async function doAnalyze() {
+  const text = document.getElementById('paraText').value.trim();
+  if(!text) return toast('请输入段落内容');
+  const box = document.getElementById('paraStreamBox');
+  box.style.display = 'block';
+  
+  // 插入加载动画
+  box.innerHTML = '<div class="ai-think">🤖 AI 正在深度阅读并思考中</div>';
+  
+  const myExecId = ++paraExecId;
+
+  let fullText = '';
+  let isFirstChunk = true;
+  let contentNode = document.createElement('span');
+
+  try {
+      const prompt = config.pPrompt.replace(/\{text\}/g, text);
+      const url = config.qApiUrl; const isResp = url.includes('/responses');
+      const body = isResp ? { model: config.qModelId, input: [{ role: 'user', content: prompt }], stream: true } : { model: config.qModelId, messages: [{ role: 'user', content: prompt }], temperature: 0.3, stream: true };
+      
+      const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.qApiKey }, body: JSON.stringify(body) });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const reader = resp.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
+      
+      while (true) {
+          if (myExecId !== paraExecId) return;
+          const { done, value } = await reader.read(); if (done) break;
+          buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop(); 
+          for (const line of lines) { 
+              const trimmed = line.trim(); if (!trimmed || trimmed.startsWith('event:') || trimmed === 'data: [DONE]') continue; 
+              if (trimmed.startsWith('data:')) { 
+                  const jsonStr = trimmed.slice(5).trim(); if (!jsonStr || jsonStr === '[DONE]') continue; 
+                  try { const evt = JSON.parse(jsonStr); 
+                      let delta = '';
+                      if (evt.type === 'response.output_text.delta' && evt.delta) delta = evt.delta; 
+                      else if (evt.choices?.[0]?.delta?.content) delta = evt.choices[0].delta.content;
+                      
+                      if (delta) {
+                          if (isFirstChunk) {
+                              box.innerHTML = '';
+                              box.appendChild(contentNode);
+                              isFirstChunk = false;
+                          }
+                          fullText += delta;
+                          const isAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 30;
+                          contentNode.appendChild(document.createTextNode(delta));
+                          if(isAtBottom) box.scrollTop = box.scrollHeight;
+                      }
+                  } catch(e) {} 
+              } 
+          }
+      }
+      
+      if(myExecId !== paraExecId) return;
+
+      if(isFirstChunk) box.innerHTML = '<span style="color:var(--red)">⚠️ 解析完成，但API未返回有效内容。请检查密钥或网络。</span>';
+      else {
+          // 后处理：仅将“原句：”替换为可点击的节点，安全操作DOM防注入
+          let pureText = box.textContent;
+          box.innerHTML = ''; 
+          pureText.split('\n').forEach((line, index, array) => {
+              let idx = line.indexOf('原句：');
+              if (idx !== -1) {
+                  let prefix = line.substring(0, idx);
+                  let sent = line.substring(idx + 3); 
+                  let pureSent = sent.trim();
+                  
+                  if (prefix) box.appendChild(document.createTextNode(prefix));
+                  
+                  let span = document.createElement('span');
+                  span.className = 'clickable-sent';
+                  span.title = '点击针对此句进行AI追问';
+                  span.setAttribute('data-sent', pureSent);
+                  span.onclick = function() { openFollowUp(this.getAttribute('data-sent')); };
+                  span.textContent = '原句：';
+                  box.appendChild(span);
+                  box.appendChild(document.createTextNode(sent));
+              } else {
+                  box.appendChild(document.createTextNode(line));
+              }
+              if (index < array.length - 1) box.appendChild(document.createTextNode('\n'));
+          });
+      }
+      log('✅ 段落解析完成');
+  } catch(e) {
+      if (myExecId === paraExecId) {
+          if (isFirstChunk) box.innerHTML = ''; 
+          const errNode = document.createElement('div');
+          errNode.style.color = 'var(--red)';
+          errNode.style.marginTop = '10px';
+          errNode.textContent = `❌ 解析中断: ${e.message}`;
+          box.appendChild(errNode);
+      }
+  }
+}
+
+// ==== 单句追问 (Follow-Up) 逻辑 ====
+function openFollowUp(sent) {
+    currentFuSent = sent;
+    document.getElementById('fuSentence').textContent = sent;
+    document.getElementById('fuQuestion').value = '';
+    document.getElementById('fuStreamBox').style.display = 'none';
+    document.getElementById('fuStreamBox').innerHTML = '';
+    document.getElementById('followUpModal').classList.add('show');
+    setTimeout(() => document.getElementById('fuQuestion').focus(), 100);
+}
+
+async function doFollowUp() {
+    const q = document.getElementById('fuQuestion').value.trim();
+    if(!q) return toast('请输入您的问题');
+    const box = document.getElementById('fuStreamBox');
+    box.style.display = 'block';
+    box.innerHTML = '<div class="ai-think" style="font-size:0.85rem">🤖 AI 正在思考回答...</div>';
+    
+    const myExecId = ++fuExecId;
+    
+    let isFirstChunk = true;
+    let contentNode = document.createElement('span');
+    
+    try {
+        let prompt = config.fPrompt.replace(/\{sent\}/g, currentFuSent).replace(/\{question\}/g, q);
+        const url = config.qApiUrl; const isResp = url.includes('/responses');
+        const reqBody = isResp ? { model: config.qModelId, input: [{ role: 'user', content: prompt }], stream: true } : { model: config.qModelId, messages: [{ role: 'user', content: prompt }], temperature: 0.3, stream: true };
+        
+        const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.qApiKey }, body: JSON.stringify(reqBody) });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const reader = resp.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
+        
+        while (true) {
+            if (myExecId !== fuExecId) return;
+            const { done, value } = await reader.read(); if (done) break;
+            buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop(); 
+            for (const line of lines) { 
+                const trimmed = line.trim(); if (!trimmed || trimmed.startsWith('event:') || trimmed === 'data: [DONE]') continue; 
+                if (trimmed.startsWith('data:')) { 
+                    const jsonStr = trimmed.slice(5).trim(); if (!jsonStr || jsonStr === '[DONE]') continue; 
+                    try { const evt = JSON.parse(jsonStr); 
+                        let delta = '';
+                        if (evt.type === 'response.output_text.delta' && evt.delta) delta = evt.delta; 
+                        else if (evt.choices?.[0]?.delta?.content) delta = evt.choices[0].delta.content;
+                        
+                        if(delta) {
+                            if (isFirstChunk) {
+                                box.innerHTML = '';
+                                box.appendChild(contentNode);
+                                isFirstChunk = false;
+                            }
+                            const isAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 20;
+                            contentNode.appendChild(document.createTextNode(delta));
+                            if(isAtBottom) box.scrollTop = box.scrollHeight;
+                        }
+                    } catch(e) {} 
+                } 
+            }
+        }
+        
+        if (myExecId === fuExecId && isFirstChunk) {
+            box.innerHTML = '<span style="color:var(--red)">⚠️ API未返回有效内容，请检查网络、模型或密钥配置。</span>';
+        }
+    } catch(e) {
+        if (myExecId === fuExecId) {
+            if (isFirstChunk) box.innerHTML = '';
+            const errNode = document.createElement('div');
+            errNode.style.color = 'var(--red)';
+            errNode.style.marginTop = '8px';
+            errNode.textContent = `❌ 追问中断: ${e.message}`;
+            box.appendChild(errNode);
+        }
+    }
+}
+
+
+// ==== 移动端/PC端 单点查词、精准划选查词 及 悬浮窗拖拽 ====
+const wp = document.getElementById('wordPopup');
+const wpHeader = document.querySelector('.wp-header');
+
+// 弹窗拖拽逻辑
+let isDraggingWp = false, wpOffsetX = 0, wpOffsetY = 0;
+wpHeader.addEventListener('mousedown', function(e) {
+  if(e.target.tagName.toLowerCase() === 'button') return;
+  isDraggingWp = true;
+  const rect = wp.getBoundingClientRect();
+  wpOffsetX = e.clientX - rect.left;
+  wpOffsetY = e.clientY - rect.top;
+  e.preventDefault();
+});
+document.addEventListener('mousemove', function(e) {
+  if(!isDraggingWp) return;
+  wp.style.left = (e.clientX - wpOffsetX) + 'px';
+  wp.style.top = (e.clientY - wpOffsetY) + 'px';
+});
+document.addEventListener('mouseup', function() { isDraggingWp = false; });
+
+// 兼容触屏拖拽
+wpHeader.addEventListener('touchstart', function(e) {
+  if(e.target.tagName.toLowerCase() === 'button') return;
+  const touch = e.touches[0];
+  isDraggingWp = true;
+  const rect = wp.getBoundingClientRect();
+  wpOffsetX = touch.clientX - rect.left;
+  wpOffsetY = touch.clientY - rect.top;
+}, {passive: false});
+document.addEventListener('touchmove', function(e) {
+  if(!isDraggingWp) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  wp.style.left = (touch.clientX - wpOffsetX) + 'px';
+  wp.style.top = (touch.clientY - wpOffsetY) + 'px';
+}, {passive: false});
+document.addEventListener('touchend', function() { isDraggingWp = false; });
+
+
+// 全局精准划选监听 (处理手动模式)
+document.addEventListener('mouseup', handleGlobalSelection);
+document.addEventListener('touchend', handleGlobalSelection, {passive: true});
+
+function handleGlobalSelection(e) {
+    if (isDraggingWp) return;
+    if (wp.contains(e.target)) return; 
+    
+    setTimeout(() => {
+        const sel = window.getSelection().toString().trim();
+        // 如果有选中文本（允许较长的短语，但限制在100字符内防误操作）
+        if (sel && sel.length > 0 && sel.length < 100) {
+            const selNode = window.getSelection().anchorNode;
+            const paraBox = document.getElementById('paraStreamBox');
+            if (selNode && paraBox.contains(selNode)) {
+                if (Date.now() - lastWordPopupTime < 500) return; // 防抖，拦截幽灵重发
+                lastWordPopupTime = Date.now();
+
+                let touch = e.changedTouches ? e.changedTouches[0] : e;
+                let px = touch.clientX, py = touch.clientY;
+                try {
+                    // 尝试获取选区底部的精确坐标，以防弹窗遮挡原生菜单
+                    const rect = window.getSelection().getRangeAt(0).getBoundingClientRect();
+                    px = rect.left + rect.width / 2;
+                    py = rect.bottom;
+                } catch(err) {}
+                window.getSelection().removeAllRanges(); // 消除底色残影
+                showWordPopup(sel, px, py + 15, false); // false 代表手动模式
+            }
+        }
+    }, 100);
+}
+
+// 智能单点取词逻辑 (处理自动模式)
+var ptrStartX = 0, ptrStartY = 0;
+var ptrIsDown = false;
+
+function onPtrDown(e) {
+    ptrIsDown = true;
+    const touch = e.touches ? e.touches[0] : e;
+    ptrStartX = touch.clientX;
+    ptrStartY = touch.clientY;
+}
+
+function onPtrUp(e) {
+    if (!ptrIsDown) return;
+    ptrIsDown = false;
+    const touch = e.changedTouches ? e.changedTouches[0] : e;
+    const endX = touch.clientX;
+    const endY = touch.clientY;
+
+    setTimeout(() => {
+        const sel = window.getSelection().toString().trim();
+        const dist = Math.sqrt(Math.pow(endX - ptrStartX, 2) + Math.pow(endY - ptrStartY, 2));
+
+        // 如果距离很小，且没有任何文字被划选，则视为普通的点击，启动智能边界寻找
+        if (dist <= 10 && (!sel || sel.length === 0)) {
+            extractWordAtPoint(endX, endY);
+        }
+    }, 50);
+}
+
+const pBox = document.getElementById('paraStreamBox');
+pBox.addEventListener('mousedown', onPtrDown);
+pBox.addEventListener('mouseup', onPtrUp);
+pBox.addEventListener('touchstart', onPtrDown, {passive: true});
+pBox.addEventListener('touchend', onPtrUp);
+
+// 电脑端保留传统的双击直接查自动模式
+pBox.addEventListener('dblclick', function(e) {
+    const sel = window.getSelection().toString().trim();
+    if(sel.length > 0 && sel.length < 100) {
+        if (Date.now() - lastWordPopupTime < 500) return;
+        lastWordPopupTime = Date.now();
+        window.getSelection().removeAllRanges();
+        showWordPopup(sel, e.pageX, e.pageY, true); // true 代表自动模式
+    }
+});
+
+function extractWordAtPoint(x, y) {
+    let range;
+    if (document.caretPositionFromPoint) {
+        let pos = document.caretPositionFromPoint(x, y);
+        if(pos && pos.offsetNode && pos.offsetNode.nodeType === Node.TEXT_NODE) {
+            range = document.createRange();
+            range.setStart(pos.offsetNode, pos.offset);
+        }
+    } else if (document.caretRangeFromPoint) {
+        range = document.caretRangeFromPoint(x, y);
+    }
+    
+    if (!range) { hideWordPopup(); return; }
+
+    let node = range.startContainer;
+    let offset = range.startOffset;
+
+    if (node.nodeType !== Node.TEXT_NODE) { hideWordPopup(); return; }
+
+    let text = node.textContent;
+    if (!text || text.length === 0) { hideWordPopup(); return; }
+
+    const isWordChar = (c) => /^[a-zA-Z\-']+$/.test(c);
+    
+    if (offset >= text.length || !isWordChar(text[offset])) {
+        if (offset > 0 && isWordChar(text[offset - 1])) offset--;
+        else { hideWordPopup(); return; } 
+    }
+
+    let start = offset, end = offset;
+    while(start > 0 && isWordChar(text[start - 1])) start--;
+    while(end < text.length && isWordChar(text[end])) end++;
+    
+    let word = text.substring(start, end).trim().replace(/^[-']+|-'+$/g, '');
+    
+    if (word.length > 0 && word.length < 50) {
+        if (Date.now() - lastWordPopupTime < 500) return; // 防抖，拦截幽灵重发
+        lastWordPopupTime = Date.now();
+        window.getSelection().removeAllRanges();
+        showWordPopup(word.toLowerCase(), x, y, true);
+    } else {
+        hideWordPopup();
+    }
+}
+
+// 严谨拦截外部点击误杀
+document.addEventListener('mousedown', function(e) {
+  // 只自动隐藏 wordPopup。不去隐藏 followUpModal
+  if(wp.style.display === 'flex' && !wp.contains(e.target)) {
+      hideWordPopup();
+  }
+});
+document.addEventListener('touchstart', function(e) {
+  if(wp.style.display === 'flex' && !wp.contains(e.target)) {
+      hideWordPopup();
+  }
+}, {passive: true});
+
+function hideWordPopup() {
+  wp.style.display = 'none';
+  currentWordPopupId++; // ID自增，使得尚未收到数据的后台网络流在回调时自我销毁
+}
+
+async function showWordPopup(word, x, y, autoSearch = true) {
+  wp.style.display = 'flex';
+  const ww = window.innerWidth, wh = window.innerHeight;
+  let left = x, top = y + 20;
+  if (left + 280 > ww) left = ww - 290;
+  if (top + 250 > wh) top = y - 260;
+  wp.style.left = left + 'px'; wp.style.top = top + 'px';
+  
+  document.getElementById('wpWord').textContent = word;
+  const body = document.getElementById('wpBody');
+  const btnSearch = document.getElementById('wpBtnSearch');
+  
+  document.getElementById('wpBtnAudio').onclick = () => speakDirect(word, 2);
+  document.getElementById('wpBtnImport').onclick = () => { importSingleWord(word); hideWordPopup(); };
+
+  const executeSearch = async () => {
+      btnSearch.style.display = 'none';
+      body.innerHTML = '<div class="ai-think" style="font-size:0.85rem">🔍 正在检索并生成释义</div>';
+      
+      const myPopupId = ++currentWordPopupId;
+
+      let fullText = '';
+      let isFirstChunk = true;
+      let contentNode = document.createElement('span');
+
+      try {
+          const prompt = config.qPrompt.replace(/\{word\}/g, word); 
+          const url = config.qApiUrl; const isResp = url.includes('/responses');
+          const reqBody = isResp ? { model: config.qModelId, input: [{ role: 'user', content: prompt }], stream: true } : { model: config.qModelId, messages: [{ role: 'user', content: prompt }], temperature: 0.3, stream: true };
+          
+          const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.qApiKey }, body: JSON.stringify(reqBody) });
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const reader = resp.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
+          
+          while (true) {
+              if (myPopupId !== currentWordPopupId) return;
+              const { done, value } = await reader.read(); if (done) break;
+              buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop(); 
+              for (const line of lines) { 
+                  const trimmed = line.trim(); if (!trimmed || trimmed.startsWith('event:') || trimmed === 'data: [DONE]') continue; 
+                  if (trimmed.startsWith('data:')) { 
+                      const jsonStr = trimmed.slice(5).trim(); if (!jsonStr || jsonStr === '[DONE]') continue; 
+                      try { const evt = JSON.parse(jsonStr); 
+                          let delta = '';
+                          if (evt.type === 'response.output_text.delta' && evt.delta) delta = evt.delta; 
+                          else if (evt.choices?.[0]?.delta?.content) delta = evt.choices[0].delta.content;
+                          
+                          if(delta) {
+                              if (isFirstChunk) {
+                                  body.innerHTML = '';
+                                  body.appendChild(contentNode);
+                                  isFirstChunk = false;
+                              }
+                              fullText += delta;
+                              const isAtBottom = body.scrollHeight - body.scrollTop <= body.clientHeight + 20;
+                              contentNode.appendChild(document.createTextNode(delta));
+                              if(isAtBottom) body.scrollTop = body.scrollHeight;
+                          }
+                      } catch(e) {} 
+                  } 
+              }
+          }
+          if(isFirstChunk && myPopupId === currentWordPopupId) {
+              body.innerHTML = '<span style="color:var(--red)">⚠️ API未返回有效内容，请检查网络、模型或密钥配置。</span>';
+              btnSearch.style.display = 'inline-block';
+          }
+      } catch(e) {
+          if(myPopupId === currentWordPopupId) {
+              if (isFirstChunk) body.innerHTML = '';
+              const errNode = document.createElement('div');
+              errNode.style.color = 'var(--red)';
+              errNode.style.marginTop = '8px';
+              errNode.textContent = `❌ 查询中断: ${e.message}`;
+              body.appendChild(errNode);
+              btnSearch.style.display = 'inline-block';
+          }
+      }
+  };
+
+  if (autoSearch) {
+      btnSearch.style.display = 'none';
+      executeSearch();
+  } else {
+      body.innerHTML = '<span style="color:var(--muted)">✨ 已选中文本，请点击查询获取解析</span>';
+      btnSearch.style.display = 'inline-block';
+      btnSearch.onclick = executeSearch;
+  }
+}
+
+function importSingleWord(w) {
+  const existing = words.find(x => x.word.toLowerCase() === w.toLowerCase());
+  if(existing) return toast(`「${w}」已存在于词库中`);
+  
+  const today = fmtNow().slice(0,10);
+  const entry = { id:gid(), word:w, date:today, stars:0, annotation:null, status:'loading', showAnno:false, ebLevel:0, nextReviewDate:today, wrongCount:0, note:'' }; 
+  words.push(entry); renderWords();
+  
+  TaskManager.add([{
+      id: gid(), word: w, type: 'import', entry, fn: async () => {
+      try { entry.annotation = await callAI(entry.word); entry.status = 'loaded'; log(`✅ 导入成功: ${entry.word}`); } catch(e) { entry.status = 'error'; log(`❌ 导入失败 [${entry.word}]: ${e.message}`); } markDirty(); renderWords();
+      }
+  }]);
+  toast(`「${w}」已加入后台导入队列`);
+}
+
+function regenerate(id) {
+  const e = words.find(w=>w.id===id); if (!e) return;
+  e.status='loading'; renderWords(); log(`排队重试: ${e.word}`);
+  TaskManager.add([{ id: gid(), word: e.word, type: 'retry', entry: e, fn: async () => { try { e.annotation = await callAI(e.word); e.status='loaded'; log(`✅ 重试成功: ${e.word}`); } catch(err) { e.status='error'; log(`❌ 重试失败 [${e.word}]: ${err.message}`); } markDirty(); renderWords(); } }]);
+  toast(`已加入重试队列`);
+}
+
+function retryAllFailed() {
+  const failed = words.filter(w => w.status === 'error'); if (!failed.length) { toast('无失败词'); return; }
+  failed.forEach(e => e.status = 'loading'); renderWords(); log(`批量排队重试 ${failed.length} 个单词`);
+  const tasks = failed.map(e => ({ id: gid(), word: e.word, type: 'retry', entry: e, fn: async () => { try { e.annotation = await callAI(e.word); e.status = 'loaded'; log(`✅ 重试成功: ${e.word}`); } catch(err) { e.status = 'error'; log(`❌ 重试失败 [${e.word}]: ${err.message}`); } markDirty(); renderWords(); } }));
+  TaskManager.add(tasks); toast(`重试 ${failed.length} 个`); switchTab('st-task', document.querySelectorAll('.tab-btn')[1]);
+}
+
+// =====================================================
+// SORTING, FILTERING & RENDERING
+// =====================================================
+function getSorted() {
+  let list = [...words];
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  if (q) list = list.filter(w => w.word.toLowerCase().includes(q) || (w.annotation?.meaning||'').includes(q));
+  
+  const f = fState;
+  
+  // 更新徽标状态
+  const isFilterActive = f.today || f.wrong || f.none || f.stMin > 0 || f.stMax < 5 || f.ebMin > 0 || f.ebMax < 7;
+  document.getElementById('filterBadge').style.display = isFilterActive ? 'inline-block' : 'none';
+
+  const todayStr = fmtNow().slice(0,10);
+
+  list = list.filter(w => {
+    // 1. 星级强约束
+    if (w.stars < f.stMin || w.stars > f.stMax) return false;
+
+    let hasCycle = w.ebLevel !== undefined && w.ebLevel !== null && w.ebLevel !== -1;
+    let isWrong = w.wrongCount > 0;
+    let isToday = hasCycle && w.ebLevel < 7 && w.nextReviewDate <= todayStr;
+    let isNone = !hasCycle;
+
+    // 2. 周期范围约束
+    let passCycleRange = true;
+    if (hasCycle) {
+      if (w.ebLevel < f.ebMin || w.ebLevel > f.ebMax) passCycleRange = false;
+    } else {
+      if (f.ebMin > 0 || f.ebMax < 7) { passCycleRange = false; }
+    }
+    if (f.none && isNone) passCycleRange = true;
+    if (!passCycleRange) return false;
+
+    // 3. 特殊状态约束 (取并集)
+    if (f.wrong || f.today || f.none) {
+      if (!((f.wrong && isWrong) || (f.today && isToday) || (f.none && isNone))) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const p = document.getElementById('sortPrimary').value;
+  const s = document.getElementById('sortSecondary').value;
+  list.sort((a,b) => { let c=cmpFn(a,b,p); if(c===0&&s!=='none') c=cmpFn(a,b,s); return c; });
+  return list;
+}
+function cmpFn(a,b,m) { switch(m) { case 'date': return b.date.localeCompare(a.date); case 'alpha': return a.word.toLowerCase().localeCompare(b.word.toLowerCase()); case 'stars': return b.stars-a.stars; default: return 0; } }
+
+function renderWords() {
+  const list = getSorted();
+  const ct = document.getElementById('wordCount');
+  const failCount = words.filter(w=>w.status==='error').length;
+  ct.textContent = `共 ${words.length} 个` + (list.length!==words.length ? `，当前符合条件 ${list.length}` : '') + (failCount ? `，${failCount} 个失败` : '');
+  const el = document.getElementById('wordList');
+  if (!list.length) { el.innerHTML=`<div class="es"><div class="icon">📭</div><p>无匹配数据</p></div>`; return; }
+
+  const showDay = document.getElementById('sortPrimary').value === 'date';
+  let h='', curDate='';
+  const today = fmtNow().slice(0,10);
+
+  for (const w of list) {
+    if (showDay && w.date!==curDate) {
+      curDate=w.date;
+      const dayWords = list.filter(x=>x.date===curDate);
+      const isCollapsed = collapsedDays.has(curDate);
+      const allSel = dayWords.every(x => selected.has(x.id));
+      
+      let cbHtml = (selectMode || reciteMode) ? `<input type="checkbox" class="date-cb" ${allSel?'checked':''} onclick="toggleDateSelect('${curDate}', event)">` : '';
+      let dtHtml = '';
+      if (isCollapsed) { 
+        dtHtml = `<span class="dt">点击展开</span>`; 
+      } else { 
+        if (!reciteMode) {
+          const allAn = dayWords.every(x => x.showAnno); 
+          dtHtml = `<span class="dt-btn" onclick="event.stopPropagation(); toggleDayAnno('${curDate}')">📖 ${allAn?'收起注释':'展开注释'}</span>`; 
+        }
+      }
+
+      h+=`<div class="dh" onclick="toggleDayCollapse('${curDate}')"><span>${cbHtml}<span class="${isCollapsed?'arrow collapsed':'arrow'}">▼</span>${fmtDate(curDate)}（${dayWords.length}个）</span>${dtHtml}</div>`;
+    }
+    if (showDay && collapsedDays.has(w.date)) continue;
+    
+    let badges = '';
+    if (config.showBadgeLevel) {
+      if (w.ebLevel === undefined || w.ebLevel === null || w.ebLevel === -1) badges += `<span class="bdg bdg-l0" style="background:#eee;color:#666">❓无周期</span>`;
+      else if (w.ebLevel >= 7) badges += `<span class="bdg bdg-gr">🎓 掌握</span>`;
+      else if (w.ebLevel === 0) badges += `<span class="bdg bdg-l0">L0 新词</span>`;
+      else badges += `<span class="bdg bdg-lx">L${w.ebLevel}</span>`;
+    }
+    if (config.showBadgeReview && w.ebLevel !== undefined && w.ebLevel < 7 && w.nextReviewDate <= today) badges += `<span class="bdg bdg-td">⏳待背</span>`;
+    
+    // 距离待背时间显示
+    if (config.showBadgeTimeLeft && w.ebLevel !== undefined && w.ebLevel < 7 && w.nextReviewDate > today) {
+        const now = new Date();
+        const revDate = new Date(w.nextReviewDate + 'T00:00:00');
+        const diffMs = revDate - now;
+        if (diffMs > 0) {
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            const diffHours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+            let timeStr = '';
+            if (diffDays > 0) timeStr += diffDays + '天';
+            timeStr += diffHours + '小时';
+            badges += `<span class="bdg" style="background:#e0f7fa;color:#00838f;border:1px solid #b2ebf2">距待背:${timeStr}</span>`;
+        }
+    }
+
+    if (config.showBadgeWrong && w.wrongCount > 0) badges += `<span class="bdg bdg-wr">🩸错(${w.wrongCount})</span>`;
+    if (config.showBadgeNote && w.note) badges += `<span class="bdg" style="background:#fff9c4;color:#f57f17;border:1px solid #ffe082">📝笔记</span>`;
+
+    const stars = config.showBadgeStar ? [1,2,3,4,5].map(i=>`<span class="st ${i<=w.stars?'f':''}" onclick="setStar('${w.id}',${i},event)">★</span>`).join('') : '';
+    const errTag = (w.status==='error') ? '<span style="font-size:calc(.7rem * var(--us));color:#fff;background:var(--red);padding:calc(1px * var(--us)) calc(6px * var(--us));border-radius:4px;margin-left:8px;vertical-align:middle">调用失败</span>' : '';
+    const meaning = w.annotation?.meaning || '';
+    let displayText = displayMode === 'word' ? esc(w.word) : displayMode === 'meaning' ? (meaning?esc(meaning):'<i style="color:var(--muted)">暂无释义</i>') : `${esc(w.word)} <span style="color:var(--muted);font-size:.85em;margin-left:10px">${esc(meaning)}</span>`;
+    
+    const isSel = selected.has(w.id); 
+    const isSelMode = selectMode || reciteMode;
+
+    h+=`<div class="wcd ${isSel&&isSelMode?'selected':''}" data-id="${w.id}">
+      <div class="wt" onclick="handleWordClick('${w.id}', event)">`;
+    if (isSelMode) h+=`<input type="checkbox" class="sel-cb" ${isSel?'checked':''} onclick="event.stopPropagation();handleWordClick('${w.id}', event)">`;
+    h+=`<span class="wn">${displayText}${errTag}</span>
+        <span class="ws" onclick="event.stopPropagation()">${badges} <span style="margin-left:6px">${stars}</span></span>
+        <span class="wa" onclick="event.stopPropagation()"><button title="朗读" onclick="playWord('${w.id}')">🔊</button><button title="编辑属性" onclick="openEdit('${w.id}')">✏️</button><button title="删除" onclick="delWord('${w.id}')">🗑️</button></span>
+      </div>`;
+
+    if (w.status==='loading') h+=`<div class="wld">⏳ 后台AI处理中...</div>`;
+    else if (w.status==='error'&&!w.annotation) h+=`<div class="wle">❌ 失败 <button onclick="regenerate('${w.id}')" style="font-size:calc(.8rem * var(--us));cursor:pointer;margin-left:6px;border:1px solid #ccc;border-radius:4px;padding:calc(2px * var(--us)) calc(8px * var(--us));background:#fff">重排队</button></div>`;
+
+    if (w.annotation && !reciteMode) { 
+      const a=w.annotation;
+      let noteHtml = w.note ? `<div class="ar" style="margin-top:8px;padding:8px;background:#fffde7;border-left:3px solid #fbc02d;border-radius:4px"><span class="al" style="color:#f57f17">笔记</span><span class="av" style="white-space:pre-wrap">${esc(w.note)}</span></div>` : '';
+      
+      h+=`<div class="an ${w.showAnno?'show':''}" id="an-${w.id}">
+        <div class="ar"><span class="ap">${esc(a.phonetic)}</span><span class="ao">${esc(a.pos)}</span><span style="margin-left:auto;display:flex;gap:4px"><button onclick="speak('${w.id}',1)" style="font-size:calc(.7rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🇬🇧</button><button onclick="speak('${w.id}',2)" style="font-size:calc(.7rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🇺🇸</button></span></div>
+        <div class="ar"><span class="al">释义</span><span class="av">${esc(a.meaning)}</span></div>
+        <div class="ar"><span class="al">短语</span><span class="av">${esc(a.phrases)}</span></div>
+        <div class="ar"><span class="al">变形</span><span class="av">${esc(a.inflections)}</span></div>
+        <div class="as"><div class="ar"><span class="al">例句</span><span class="av">${esc(a.examples).replace(/\n/g,'<br>')}</span></div></div>
+        <div class="as"><div class="ar"><span class="al">助记</span><span class="av">${esc(a.mnemonics)}</span></div></div>
+        ${noteHtml}
+        <div class="aa"><button onclick="regenerate('${w.id}')">🔄 重新生成</button><button onclick="openEdit('${w.id}')">✏️ 笔记与属性</button></div>
+      </div>`;
+    }
+    h+=`</div>`;
+  }
+  el.innerHTML = h;
+}
+function fmtDate(ds) { const d=new Date(ds+'T00:00:00'), t=new Date(), ts=t.toISOString().slice(0,10); const y=new Date(t); y.setDate(y.getDate()-1); if(ds===ts) return '📅 今天 ('+ds+')'; if(ds===y.toISOString().slice(0,10)) return '📅 昨天 ('+ds+')'; return `📅 ${Math.floor((t-d)/864e5)}天前 (${ds})`; }
+
+// =====================================================
+// DUAL MODE & INTERACTIONS
+// =====================================================
+function toggleReciteMode() {
+  reciteMode = !reciteMode;
+  document.getElementById('btnReciteMode').textContent = reciteMode ? '🔙 退出背词' : '🧠 背单词';
+  document.getElementById('btnReciteMode').classList.toggle('on', reciteMode);
+
+  document.getElementById('toggleAllBtn').style.display = reciteMode ? 'none' : 'inline-block';
+  document.getElementById('selectModeBtn').style.display = reciteMode ? 'none' : 'inline-block';
+
+  if(reciteMode) { 
+    selectMode = false; 
+    document.getElementById('selectModeBtn').classList.remove('on'); 
+    document.getElementById('selectModeBtn').textContent = '☑ 选择'; 
+  }
+  document.getElementById('actsManage').style.display = reciteMode ? 'none' : 'flex';
+  document.getElementById('actsRecite').style.display = reciteMode ? 'flex' : 'none';
+  
+  if(!reciteMode && !selectMode) {
+    document.getElementById('selBar').style.display = 'none'; selected.clear(); rangeState = 0; document.getElementById('btnRange').textContent = '🔗 区间连选 (关)';
+  } else { document.getElementById('selBar').style.display = 'flex'; }
+  updateSelBar(); renderWords();
+}
+
+function toggleSelectMode() { 
+  if(reciteMode) return;
+  selectMode = !selectMode; 
+  if (!selectMode) { selected.clear(); rangeState = 0; document.getElementById('btnRange').textContent = '🔗 区间连选 (关)'; } 
+  document.getElementById('selectModeBtn').classList.toggle('on', selectMode); document.getElementById('selectModeBtn').textContent = selectMode ? '✕ 退出选择' : '☑ 选择'; 
+  document.getElementById('selBar').style.display = selectMode ? 'flex' : 'none'; 
+  updateSelBar(); renderWords(); 
+}
+
+function handleWordClick(id, event) {
+  if (selectMode || reciteMode) { toggleSelect(id, event); } else { toggleAnno(id); }
+}
+
+function updateTargetedSelectDOM(id, isSel) {
+    let els = document.querySelectorAll(`.wcd[data-id="${id}"]`);
+    els.forEach(el => {
+        if(isSel) el.classList.add('selected'); else el.classList.remove('selected');
+        let cb = el.querySelector('.sel-cb');
+        if(cb) cb.checked = isSel;
+    });
+}
+
+function toggleSelect(id, event) {
+  if (rangeState === 1) { 
+    rangeStartId = id; rangeState = 2; document.getElementById('btnRange').textContent = '🔗 请点终点...'; 
+    selected.add(id); updateTargetedSelectDOM(id, true); updateSelBar(); return;
+  } else if (rangeState === 2) { 
+    let list = getSorted(), ids = list.map(w=>w.id); let i1 = ids.indexOf(rangeStartId), i2 = ids.indexOf(id);
+    if(i1 !== -1 && i2 !== -1) { let lo = Math.min(i1,i2), hi = Math.max(i1,i2); for(let i=lo; i<=hi; i++) selected.add(ids[i]); }
+    rangeState = 0; rangeStartId = null; document.getElementById('btnRange').textContent = '🔗 区间连选 (关)'; updateSelBar(); renderWords(); return;
+  }
+  const list = getSorted(), ids = list.map(w=>w.id);
+  if (event && event.shiftKey && lastClickedId && lastClickedId !== id) {
+    const i1 = ids.indexOf(lastClickedId), i2 = ids.indexOf(id);
+    if (i1 !== -1 && i2 !== -1) { const lo = Math.min(i1, i2), hi = Math.max(i1, i2); for (let i = lo; i <= hi; i++) selected.add(ids[i]); }
+    renderWords();
+  } else { 
+    let isSel = false;
+    if (selected.has(id)) { selected.delete(id); isSel = false; } else { selected.add(id); isSel = true; } 
+    updateTargetedSelectDOM(id, isSel);
+  }
+  lastClickedId = id; updateSelBar(); 
+}
+
+function toggleRangeSelect() {
+  if (rangeState === 0) { rangeState = 1; document.getElementById('btnRange').textContent = '🔗 请点起点...'; toast('请点击列表中的首个单词'); } 
+  else { rangeState = 0; rangeStartId = null; document.getElementById('btnRange').textContent = '🔗 区间连选 (关)'; }
+}
+
+function toggleDateSelect(date, event) {
+  event.stopPropagation();
+  let list = getSorted().filter(w => w.date === date);
+  let allSel = list.every(w => selected.has(w.id));
+  if (allSel) list.forEach(w => selected.delete(w.id)); else list.forEach(w => selected.add(w.id));
+  updateSelBar(); renderWords();
+}
+
+function selectAllVisible() { getSorted().forEach(w => selected.add(w.id)); updateSelBar(); renderWords(); }
+function deselectAll() { selected.clear(); lastClickedId = null; rangeState = 0; document.getElementById('btnRange').textContent = '🔗 区间连选 (关)'; updateSelBar(); renderWords(); }
+function deleteSelected() { const n = selected.size; if (!n || !confirm(`确定删除 ${n} 个单词？`)) return; words = words.filter(w => !selected.has(w.id)); selected.clear(); markDirty(); updateSelBar(); renderWords(); toast(`已删除 ${n} 个`); log(`批量删除了 ${n} 个单词`); }
+function updateSelBar() { document.getElementById('selCount').textContent = `已选 ${selected.size} 个`; document.querySelector('.run-btn').textContent = `▶️ 开始测验 (${selected.size})`; }
+
+function setStar(id,r,event) { event.stopPropagation(); const e=words.find(w=>w.id===id); if(!e) return; e.stars = e.stars===r ? 0 : r; markDirty(); renderWords(); }
+function delWord(id) { const e=words.find(w=>w.id===id); if(!e || !confirm(`删除「${e.word}」？`)) return; words=words.filter(w=>w.id!==id); markDirty(); renderWords(); log(`删除了单词: ${e.word}`); }
+
+function toggleAnno(id) { 
+    const e = words.find(w => w.id === id); if(!e) return; 
+    e.showAnno = !e.showAnno; 
+    const el = document.getElementById('an-' + id); 
+    if(el) { if(e.showAnno) el.classList.add('show'); else el.classList.remove('show'); } 
+}
+
+function toggleDayCollapse(date) { if (collapsedDays.has(date)) collapsedDays.delete(date); else collapsedDays.add(date); renderWords(); }
+function toggleDayAnno(date) { const dayWords = words.filter(w => w.date === date); if (dayWords.length === 0) return; const allShown = dayWords.every(w => w.showAnno); dayWords.forEach(w => w.showAnno = !allShown); renderWords(); }
+
+function toggleAll() { 
+    allShown = !allShown; 
+    words.forEach(w => w.showAnno = allShown); 
+    const btn = document.getElementById('toggleAllBtn'); 
+    btn.textContent = allShown ? '全部隐藏' : '全部显示'; 
+    btn.classList.toggle('on', allShown); 
+    
+    // 采用局部精准更新替换全量渲染，告别卡顿
+    document.querySelectorAll('.an').forEach(el => {
+        if(allShown) el.classList.add('show'); else el.classList.remove('show');
+    });
+    document.querySelectorAll('.dt-btn').forEach(btn => {
+        btn.innerHTML = allShown ? '📖 收起注释' : '📖 展开注释';
+    });
+}
+
+function cycleDisplayMode() { const m = ['word', 'meaning', 'both']; displayMode = m[(m.indexOf(displayMode) + 1) % m.length]; document.getElementById('displayModeBtn').textContent = {word:'显示：英文',meaning:'显示：释义',both:'显示：英+中'}[displayMode]; renderWords(); }
+
+// =====================================================
+// BATCH ACTIONS (STARS & LEVELS)
+// =====================================================
+function batchSetStar(selEl) {
+  const val = selEl.value; selEl.value = "";
+  if (!val || selected.size === 0) return toast('未选择单词');
+  let st = parseInt(val);
+  selected.forEach(id => { let w = words.find(x=>x.id===id); if(w) w.stars = st; });
+  markDirty(); renderWords(); toast(`已将 ${selected.size} 个单词设为 ${st}★`); log(`批量将 ${selected.size} 个单词设为了 ${st} 星`);
+}
+function batchClearWrong() {
+  if (selected.size === 0) return toast('未选择单词');
+  let c = 0; selected.forEach(id => { let w = words.find(x=>x.id===id); if(w && w.wrongCount > 0) { w.wrongCount = 0; c++; } });
+  if (c>0) { markDirty(); renderWords(); toast(`已将 ${c} 个单词移出错题本`); log(`批量移出了 ${c} 个错题`); } else { toast('选中的单词本就不在错题本中'); }
+}
+function batchSetLevel(selEl) {
+  const val = selEl.value; selEl.value = "";
+  if (!val || selected.size === 0) return toast('未选择单词');
+  let lvl = parseInt(val);
+  selected.forEach(id => { 
+    let w = words.find(x=>x.id===id); 
+    if(w) { 
+      w.ebLevel = lvl; 
+      w.nextReviewDate = lvl === 0 ? fmtNow().slice(0,10) : calcNextDate(lvl); 
+    } 
+  });
+  markDirty(); renderWords(); toast(`已将 ${selected.size} 个单词强设为 L${lvl===7?'掌握':lvl}`); log(`批量将 ${selected.size} 个单词的周期设为了 L${lvl}`);
+}
+
+// =====================================================
+// TEST RECITE FULLSCREEN MODAL
+// =====================================================
+var testQueue = [];
+var testIndex = 0;
+var testAudioTimer = null;
+var currentTestWord = null;
+var currentInputHasErr = false;
+var waitingForNext = false;
+
+function startTest() {
+  if (selected.size === 0) return toast('请先选择要测验的单词！');
+  testQueue = Array.from(selected).map(id => words.find(w=>w.id===id)).filter(w => w && w.annotation && w.status==='loaded');
+  if (testQueue.length === 0) return toast('选中词中没有已成功生成注释的单词，无法测试');
+  testIndex = 0; document.getElementById('testModal').style.display = 'flex'; document.body.style.overflow = 'hidden'; nextTestCard();
+  log(`开始了测验，共 ${testQueue.length} 个单词`);
+}
+
+function confirmExitTest() {
+  if (testIndex < testQueue.length) { if(!confirm(`测验尚未完成 (剩余 ${testQueue.length - testIndex} 个)。确定退出吗？`)) return; }
+  exitTest();
+}
+
+function exitTest() {
+  clearInterval(testAudioTimer); document.getElementById('testModal').style.display = 'none'; document.body.style.overflow = '';
+  testQueue = []; testIndex = 0; markDirty(); renderWords();
+}
+
+function genHint(word) {
+  if(!config.reciteHint) return '';
+  let arr = word.split('');
+  let alphaIndices = [];
+  for (let i = 0; i < arr.length; i++) { if (/[a-zA-Z]/.test(arr[i])) alphaIndices.push(i); }
+  
+  let totalAlpha = alphaIndices.length;
+  if (totalAlpha <= 2) return arr.map(c => /[a-zA-Z]/.test(c) ? '_' : c).join(' ');
+
+  let showCount = Math.round(totalAlpha * (config.reciteHintPct / 100));
+  if (showCount < 1 && config.reciteHintPct > 0) showCount = 1;
+  if (showCount >= totalAlpha) return arr.join(' ');
+
+  let toShow = new Set();
+  if (showCount > 0) { toShow.add(alphaIndices[0]); showCount--; } 
+
+  let remainingIndices = alphaIndices.slice(1);
+  for (let i = remainingIndices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [remainingIndices[i], remainingIndices[j]] = [remainingIndices[j], remainingIndices[i]];
+  }
+  for (let i = 0; i < showCount; i++) { toShow.add(remainingIndices[i]); }
+
+  for (let i = 0; i < arr.length; i++) { if (/[a-zA-Z]/.test(arr[i]) && !toShow.has(i)) { arr[i] = '_'; } }
+  return arr.join(' '); 
+}
+
+function nextTestCard() {
+  clearInterval(testAudioTimer);
+  if (testIndex >= testQueue.length) { toast('🎉 测验完成！'); return exitTest(); }
+  currentTestWord = testQueue[testIndex]; currentInputHasErr = false; waitingForNext = false;
+  
+  document.getElementById('testProgText').textContent = `(${testIndex+1}/${testQueue.length})`;
+  document.getElementById('testProgFill').style.width = ((testIndex) / testQueue.length * 100) + '%';
+  
+  document.getElementById('tmMeaning').textContent = config.reciteShowMeaning ? currentTestWord.annotation.meaning : '*** 释义已隐藏 ***';
+  document.getElementById('tmPhonetic').textContent = config.reciteShowPhonetic ? currentTestWord.annotation.phonetic : '*** 音标已隐藏 ***';
+  document.getElementById('tmHint').textContent = genHint(currentTestWord.word);
+  
+  const inp = document.getElementById('tmInput');
+  inp.value = ''; inp.className = 'test-input'; inp.readOnly = false;
+  document.getElementById('tmAnsBox').style.display = 'none'; document.getElementById('tmFullAnno').style.display = 'none';
+  document.getElementById('btnShowAns').style.display = 'block'; document.getElementById('btnNextWord').style.display = 'none';
+  
+  setTimeout(()=>inp.focus(), 100);
+  testPlayAudio(false); if (config.recitePronounce === "2") testAudioTimer = setInterval(() => testPlayAudio(false), 3000);
+}
+
+function testPlayAudio(force = false) { 
+    if(force === true || config.recitePronounce !== "0") speakDirect(currentTestWord.word, 2); 
+}
+
+function renderTestAnno(w) {
+  let a = w.annotation;
+  let html = '';
+  if (config.ansShowMeaning) html += `<div class="ar"><span class="al">释义</span><span class="av">${esc(a.meaning)}</span></div>`;
+  if (config.ansShowPhrases) html += `<div class="ar"><span class="al">短语</span><span class="av">${esc(a.phrases)}</span></div>`;
+  if (config.ansShowInflections) html += `<div class="ar"><span class="al">变形</span><span class="av">${esc(a.inflections)}</span></div>`;
+  if (config.ansShowExamples) html += `<div class="ar"><span class="al">例句</span><span class="av">${esc(a.examples).replace(/\n/g,'<br>')}</span></div>`;
+  if (config.ansShowMnemonics) html += `<div class="ar"><span class="al">助记</span><span class="av">${esc(a.mnemonics)}</span></div>`;
+  if (config.ansShowNote && w.note) html += `<div class="ar" style="margin-top:4px;padding:6px;background:#fffde7;border-left:3px solid #fbc02d;border-radius:4px"><span class="al" style="color:#f57f17">笔记</span><span class="av" style="white-space:pre-wrap">${esc(w.note)}</span></div>`;
+  if (!html) html = '<div class="ar" style="color:var(--muted)">（您已在设置中关闭了所有答案显示）</div>';
+  return html;
+}
+
+document.getElementById('tmInput').addEventListener('input', function(e) {
+  if(waitingForNext) return;
+  const val = this.value.trim().toLowerCase(), target = currentTestWord.word.toLowerCase();
+  this.className = 'test-input';
+  
+  if (val === target) {
+    if (!currentInputHasErr) { 
+      const today = fmtNow().slice(0,10);
+      if ((currentTestWord.ebLevel || 0) === 0 || currentTestWord.nextReviewDate <= today) {
+        currentTestWord.ebLevel = Math.min(7, (currentTestWord.ebLevel||0) + 1);
+        currentTestWord.nextReviewDate = calcNextDate(currentTestWord.ebLevel);
+      }
+      if (config.reciteRemoveWrong && currentTestWord.wrongCount > 0) { currentTestWord.wrongCount = 0; } 
+    }
+
+    this.className = 'test-input ok'; this.readOnly = true; clearInterval(testAudioTimer);
+    if (config.recitePronounceAns) speakDirect(currentTestWord.word, 2); // 恢复答对发音
+    
+    document.getElementById('tmFullAnno').innerHTML = renderTestAnno(currentTestWord);
+    document.getElementById('tmFullAnno').style.display = 'flex';
+    document.getElementById('btnShowAns').style.display = 'none';
+    document.getElementById('btnNextWord').style.display = 'inline-block';
+    
+    waitingForNext = true;
+    setTimeout(() => document.getElementById('btnNextWord').focus(), 50);
+  }
+});
+
+document.getElementById('tmInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { if (waitingForNext) testNextBtn(); else if (!this.readOnly && this.value.trim().toLowerCase() !== currentTestWord.word.toLowerCase()) testGiveUp(); }
+});
+
+function testGiveUp() {
+  if(waitingForNext) { testNextBtn(); return; }
+  clearInterval(testAudioTimer); const inp = document.getElementById('tmInput'); inp.className = 'test-input err';
+  if (config.recitePronounceAns) speakDirect(currentTestWord.word, 2); // 恢复答错发音
+  
+  if (!currentInputHasErr) {
+    currentInputHasErr = true;
+    currentTestWord.wrongCount = (currentTestWord.wrongCount || 0) + 1;
+    
+    const today = fmtNow().slice(0,10);
+    if (config.recitePunish === 'reset') { 
+      currentTestWord.ebLevel = 0; 
+      currentTestWord.nextReviewDate = today; 
+    } else {
+      if (config.recitePunish === 'downgrade') { 
+        currentTestWord.ebLevel = Math.max(0, (currentTestWord.ebLevel||0) - 1); 
+      }
+      if (currentTestWord.nextReviewDate <= today) {
+        currentTestWord.nextReviewDate = today; 
+      }
+    }
+  }
+  
+  document.getElementById('btnShowAns').style.display = 'none';
+  document.getElementById('tmAnsBox').style.display = 'flex'; 
+  document.getElementById('tmCorrectAns').textContent = currentTestWord.word;
+  document.getElementById('tmFullAnno').innerHTML = renderTestAnno(currentTestWord); 
+  document.getElementById('tmFullAnno').style.display = 'flex';
+
+  if (config.reciteForceRewrite) {
+    inp.value = ''; setTimeout(()=>inp.focus(), 100); 
+    document.querySelector('#tmAnsBox p').innerHTML = '❌ 拼错啦！请照着上方正确拼写再打一遍以继续';
+  } else {
+    inp.value = currentTestWord.word; inp.readOnly = true;
+    document.getElementById('btnNextWord').style.display = 'inline-block';
+    document.querySelector('#tmAnsBox p').innerHTML = '❌ 拼错啦！已为您显示正确答案及释义。';
+    waitingForNext = true; setTimeout(() => document.getElementById('btnNextWord').focus(), 50);
+  }
+}
+function testNextBtn() { testIndex++; nextTestCard(); }
+
+// =====================================================
+// SETTINGS & MISC
+// =====================================================
+function switchTab(tabId, btn) { document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active')); btn.classList.add('active'); document.getElementById(tabId).classList.add('active'); }
+function openSettings() {
+  document.getElementById('cfgUiSize').value=config.uiSize || 'm';
+  document.getElementById('cfgBdStar').checked=config.showBadgeStar;
+  document.getElementById('cfgBdLevel').checked=config.showBadgeLevel;
+  document.getElementById('cfgBdRev').checked=config.showBadgeReview;
+  document.getElementById('cfgBdWr').checked=config.showBadgeWrong;
+  document.getElementById('cfgBdNote').checked=config.showBadgeNote;
+  document.getElementById('cfgBdTimeLeft').checked=config.showBadgeTimeLeft;
+
+  document.getElementById('cfgAnsMean').checked=config.ansShowMeaning;
+  document.getElementById('cfgAnsPhr').checked=config.ansShowPhrases;
+  document.getElementById('cfgAnsInf').checked=config.ansShowInflections;
+  document.getElementById('cfgAnsEx').checked=config.ansShowExamples;
+  document.getElementById('cfgAnsMne').checked=config.ansShowMnemonics;
+  document.getElementById('cfgAnsNote').checked=config.ansShowNote;
+
+  document.getElementById('cfgUrl').value=config.apiUrl; document.getElementById('cfgKey').value=config.apiKey; document.getElementById('cfgModel').value=config.modelId; document.getElementById('cfgPrompt').value=config.prompt;
+  document.getElementById('cfgQUrl').value=config.qApiUrl; document.getElementById('cfgQKey').value=config.qApiKey; document.getElementById('cfgQModel').value=config.qModelId; document.getElementById('cfgQPrompt').value=config.qPrompt;
+  document.getElementById('cfgPPrompt').value=config.pPrompt;
+  document.getElementById('cfgFPrompt').value=config.fPrompt;
+  
+  document.getElementById('cfgBinId').value=config.binId || ''; document.getElementById('cfgBinKey').value=config.binKey || '';
+  
+  document.getElementById('cfgConcurrency').value=config.concurrencyLimit || 3; 
+  syncUI('cfgTimestamp','tsTrack','tsKnob', config.timestamp);
+  syncUI('cfgAutoPronounce','apTrack','apKnob', config.autoPronounce);
+  syncUI('cfgRRemWr','rwTrack','rwKnob', config.reciteRemoveWrong);
+  syncUI('cfgRForceRewrite','frTrack','frKnob', config.reciteForceRewrite);
+  syncUI('cfgRAnsPronounce','rapTrack','rapKnob', config.recitePronounceAns);
+  
+  syncUI('cfgRShowMeaning','smTrack','smKnob', config.reciteShowMeaning);
+  syncUI('cfgRShowPhonetic','spTrack','spKnob', config.reciteShowPhonetic);
+  
+  syncUI('cfgRHint','hintTrack','hintKnob', config.reciteHint);
+  document.getElementById('hintWrap').style.display = config.reciteHint ? 'block' : 'none';
+  document.getElementById('cfgRHintPct').value = config.reciteHintPct; document.getElementById('hintPctLbl').textContent = config.reciteHintPct + '%';
+  document.getElementById('cfgRPronounce').value = config.recitePronounce; document.getElementById('cfgRPunish').value = config.recitePunish;
+  document.getElementById('cfgMemo').value = config.globalMemo || "";
+  
+  document.getElementById('logBox').textContent = logs.join('\n'); // 加载时填充日志
+  TaskManager.render(); document.getElementById('settingsModal').classList.add('show'); 
+}
+function saveSettings() {
+  config.uiSize=document.getElementById('cfgUiSize').value;
+  config.showBadgeStar=document.getElementById('cfgBdStar').checked;
+  config.showBadgeLevel=document.getElementById('cfgBdLevel').checked;
+  config.showBadgeReview=document.getElementById('cfgBdRev').checked;
+  config.showBadgeWrong=document.getElementById('cfgBdWr').checked;
+  config.showBadgeNote=document.getElementById('cfgBdNote').checked;
+  config.showBadgeTimeLeft=document.getElementById('cfgBdTimeLeft').checked;
+
+  config.ansShowMeaning=document.getElementById('cfgAnsMean').checked;
+  config.ansShowPhrases=document.getElementById('cfgAnsPhr').checked;
+  config.ansShowInflections=document.getElementById('cfgAnsInf').checked;
+  config.ansShowExamples=document.getElementById('cfgAnsEx').checked;
+  config.ansShowMnemonics=document.getElementById('cfgAnsMne').checked;
+  config.ansShowNote=document.getElementById('cfgAnsNote').checked;
+
+  config.apiUrl=document.getElementById('cfgUrl').value.trim(); config.apiKey=document.getElementById('cfgKey').value.trim(); config.modelId=document.getElementById('cfgModel').value.trim(); config.prompt=document.getElementById('cfgPrompt').value||DEFAULT_PROMPT;
+  config.qApiUrl=document.getElementById('cfgQUrl').value.trim(); config.qApiKey=document.getElementById('cfgQKey').value.trim(); config.qModelId=document.getElementById('cfgQModel').value.trim(); config.qPrompt=document.getElementById('cfgQPrompt').value||DEFAULT_QUERY_PROMPT;
+  config.pPrompt=document.getElementById('cfgPPrompt').value||DEFAULT_P_PROMPT;
+  config.fPrompt=document.getElementById('cfgFPrompt').value||DEFAULT_F_PROMPT;
+  
+  config.binId=document.getElementById('cfgBinId').value.trim();
+  config.binKey=document.getElementById('cfgBinKey').value.trim();
+  
+  // 安全策略：所有密钥存入本地存储 localStorage
+  localStorage.setItem('vocab_apiKey', config.apiKey);
+  localStorage.setItem('vocab_qApiKey', config.qApiKey);
+  localStorage.setItem('vocab_binId', config.binId);
+  localStorage.setItem('vocab_binKey', config.binKey);
+  
+  let limit = parseInt(document.getElementById('cfgConcurrency').value); if(isNaN(limit) || limit < 1) limit = 1; if(limit > 20) limit = 20;
+  const isLimInc = limit > config.concurrencyLimit; config.concurrencyLimit = limit; document.getElementById('cfgConcurrency').value = limit; if(isLimInc) TaskManager.pump();
+  config.timestamp = document.getElementById('cfgTimestamp').checked; if (!config.timestamp) fileHandle = null; 
+  config.autoPronounce = document.getElementById('cfgAutoPronounce').checked;
+  config.reciteRemoveWrong = document.getElementById('cfgRRemWr').checked;
+  config.reciteForceRewrite = document.getElementById('cfgRForceRewrite').checked;
+  config.recitePronounceAns = document.getElementById('cfgRAnsPronounce').checked;
+  
+  config.reciteShowMeaning = document.getElementById('cfgRShowMeaning').checked;
+  config.reciteShowPhonetic = document.getElementById('cfgRShowPhonetic').checked;
+  
+  config.reciteHint = document.getElementById('cfgRHint').checked;
+  config.reciteHintPct = parseInt(document.getElementById('cfgRHintPct').value) || 40;
+  config.recitePronounce = document.getElementById('cfgRPronounce').value;
+  config.recitePunish = document.getElementById('cfgRPunish').value;
+  config.globalMemo = document.getElementById('cfgMemo').value;
+  
+  applyUISize(config.uiSize);
+  TaskManager.render(); markDirty(); renderWords(); toast('已保存');
+}
+function toggleVis(inputId, btn) { const inp = document.getElementById(inputId); if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🔒'; } else { inp.type = 'password'; btn.textContent = '👁'; } }
+function syncUI(id, trackId, knobId, forceVal) { 
+  const el = document.getElementById(id); if(forceVal!==undefined) el.checked=forceVal;
+  const on = el.checked; document.getElementById(knobId).style.left = on ? '23px' : '3px'; document.getElementById(trackId).style.background = on ? 'var(--accent)' : '#ccc'; 
+}
+function resetAllEbbinghaus() {
+  if(!confirm('确定要将所有单词的进度（含错题本）重置为未学习状态吗？此操作无法撤销。')) return;
+  const today = fmtNow().slice(0,10);
+  words.forEach(w => { w.ebLevel=0; w.nextReviewDate=today; w.wrongCount=0; });
+  markDirty(); renderWords(); toast('所有词汇记忆周期已重置');
+}
+
+function openEdit(id) {
+  const e=words.find(w=>w.id===id); if(!e) return; editingId=id; const a=e.annotation||{};
+  const fs=[
+    ['phonetic','音标',a.phonetic||''],['pos','词性',a.pos||''],['meaning','释义',a.meaning||''],
+    ['phrases','短语',a.phrases||''],['inflections','变形',a.inflections||''],
+    ['examples','例句',a.examples||'',1],['mnemonics','助记',a.mnemonics||'',1],
+    ['note','📝 个人笔记 (不被AI重新生成覆盖)',e.note||'',1]
+  ];
+  let h=`<h3 style="margin-bottom:14px;color:var(--primary)">${esc(e.word)}</h3>`; fs.forEach(([k,l,v,ta])=>{ h+=`<div class="ef"><label>${l}</label>${ta?`<textarea id="ed-${k}" style="${k==='note'?'background:#fffde7;border-color:#fbc02d':''}">${esc(v)}</textarea>`:`<input type="text" id="ed-${k}" value="${esc(v)}">`}</div>`; });
+  h+=`<div class="sr" style="margin-top:14px"><button onclick="saveEdit()">💾 保存</button><button onclick="closeModal('editModal')">取消</button></div>`;
+  document.getElementById('editBody').innerHTML=h; document.getElementById('editModal').classList.add('show');
+}
+function saveEdit() {
+  const e=words.find(w=>w.id===editingId); if(!e) return;
+  e.annotation={phonetic:document.getElementById('ed-phonetic').value,pos:document.getElementById('ed-pos').value,meaning:document.getElementById('ed-meaning').value,phrases:document.getElementById('ed-phrases').value,inflections:document.getElementById('ed-inflections').value,examples:document.getElementById('ed-examples').value,mnemonics:document.getElementById('ed-mnemonics').value};
+  e.note=document.getElementById('ed-note').value;
+  e.status='loaded'; markDirty(); renderWords(); closeModal('editModal'); toast('已保存');
+}
+
+function exportJson() { const data = { words, config: getSafeConfig(), lastSaveTime }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `词汇_${getTimestamp()}.json`; a.click(); URL.revokeObjectURL(url); toast('✅ 已导出'); log('导出了 JSON 文件'); }
+
+function handleJsonImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.words) throw new Error('无效数据');
+      const merge = confirm(`文件包含 ${data.words.length} 个单词。\n确定=合并，取消=替换全部`);
+      if (merge) {
+        const ext = new Set(words.map(w => w.word.toLowerCase()));
+        const nw = data.words.filter(w => !ext.has(w.word.toLowerCase()));
+        words = [...words, ...nw];
+      } else {
+        words = data.words;
+      }
+      
+      if (data.config && confirm('是否导入设置？')) {
+        let c = data.config;
+        // 防覆盖，防止导入空密码把本地密码抹掉
+        c.apiKey = config.apiKey;
+        c.qApiKey = config.qApiKey;
+        c.binId = config.binId;
+        c.binKey = config.binKey;
+        
+        config = { ...config, ...c };
+        
+        // 关键修复：导入后立即刷新 UI 状态
+        applyUISize(config.uiSize || 'm');
+        
+        if (document.getElementById('settingsModal').classList.contains('show')) {
+          openSettings(); 
+        }
+      }
+      
+      markDirty();
+      renderWords();
+      toast('导入成功');
+      log(`导入了 ${data.words.length} 个单词`);
+    } catch(err) {
+      toast('❌ 导入失败');
+      log(`导入失败: ${err.message}`);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function clearAll() { if(!confirm('确定清空所有数据？')) return; words=[]; markDirty(); renderWords(); toast('已清空'); log('清空了所有单词数据'); }
+
+var currentAudio = null;
+function playWord(id) { const e = words.find(w=>w.id===id); if (e) speakDirect(e.word, 2); }
+function speak(id, type) { const e = words.find(w=>w.id===id); if (e) speakDirect(e.word, type); }
+function speakDirect(word, type) {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; } window.speechSynthesis && window.speechSynthesis.cancel();
+  const audio = new Audio(`https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=${type}`); currentAudio = audio; audio.onended = () => { currentAudio = null; }; audio.onerror = () => { currentAudio = null; speakFallback(word, type); }; audio.play().catch(() => { currentAudio = null; speakFallback(word, type); });
+}
+function speakFallback(word, type) {
+  if (!window.speechSynthesis) return; const utter = new SpeechSynthesisUtterance(word); utter.lang = type === 1 ? 'en-GB' : 'en-US'; utter.rate = 0.9;
+  const voices = speechSynthesis.getVoices(), l = type === 1 ? 'en-GB' : 'en-US'; const m = voices.find(v => v.lang === l) || voices.find(v => v.lang.startsWith('en'));
+  if (m) utter.voice = m; speechSynthesis.speak(utter);
+}
+if (window.speechSynthesis) { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); }
+
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function gid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function jsEsc(s) { return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"'); }
+function fmtNow() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; }
+function updateClock() { document.getElementById('currentTime').textContent = fmtNow(); }
+function toast(msg) { document.querySelectorAll('.toast').forEach(t=>t.remove()); const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2500); }
+
+document.querySelectorAll('.mc').forEach(btn => { /* onclick 已写 */ });
+document.addEventListener('keydown',e=>{ 
+    if(e.key==='Escape') { 
+        if(document.getElementById('testModal').style.display==='flex') confirmExitTest(); 
+        else { document.querySelectorAll('.mo.show').forEach(m=>m.classList.remove('show')); hideWordPopup(); } 
+    } 
+});
+document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.key==='s') { e.preventDefault(); saveFile(); } });
+
+loadEmbedded(); document.getElementById('lastSaveTime').textContent = lastSaveTime || '未保存';
+
+// ==== 修复：强制初始化界面为标准状态，覆盖可能被错误保存进去的 DOM 样式 ====
+reciteMode = false;
+selectMode = false;
+allShown = false;
+displayMode = 'word';
+document.getElementById('btnReciteMode').classList.remove('on');
+document.getElementById('btnReciteMode').textContent = '🧠 背单词';
+document.getElementById('selectModeBtn').classList.remove('on');
+document.getElementById('selectModeBtn').textContent = '☑ 选择';
+document.getElementById('toggleAllBtn').style.display = 'inline-block';
+document.getElementById('toggleAllBtn').classList.remove('on');
+document.getElementById('toggleAllBtn').textContent = '全部显示';
+document.getElementById('selectModeBtn').style.display = 'inline-block';
+document.getElementById('displayModeBtn').textContent = '显示：英文';
+document.getElementById('actsManage').style.display = 'flex';
+document.getElementById('actsRecite').style.display = 'none';
+document.getElementById('selBar').style.display = 'none';
+document.getElementById('testModal').style.display = 'none';
+document.body.style.overflow = '';
+document.querySelectorAll('.mo.show').forEach(m => m.classList.remove('show'));
+hideWordPopup();
+selected.clear();
+rangeState = 0;
+if(document.getElementById('btnRange')) document.getElementById('btnRange').textContent = '🔗 区间连选 (关)';
+renderWords();
+// ==============================================================================
+
+updateClock(); setInterval(updateClock, 1000); log('系统启动完成，API测试与日志模块已加载');
+</script>
+
+</body></html>
