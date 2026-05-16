@@ -948,21 +948,11 @@ function getSafeConfig() {
   return sc;
 }
 
-function getPublicConfig() {
-  const sc = getSafeConfig();
-  sc.prompt = '';
-  sc.qPrompt = '';
-  sc.pPrompt = '';
-  sc.fPrompt = '';
-  sc.wPrompt = '';
-  return sc;
-}
-
 // =====================================================
 // CLOUD SYNC & FILE I/O (GITHUB GIST)
 // =====================================================
 function getFullHTML() {
-  const data = JSON.stringify({ words, config: getPublicConfig(), lastSaveTime }); const html = document.documentElement.outerHTML;
+  const data = JSON.stringify({ words, config: getSafeConfig(), lastSaveTime }); const html = document.documentElement.outerHTML;
   const re = /(<script id="embedded-data" type="application\/json">)([\s\S]*?)(<\/script>)/;
   // 使用回调函数返回，彻底阻断内容中带有 $n 的符号对正则替换的破坏
   return '<!DOCTYPE html>\n<html lang="zh-CN">' + html.slice(html.indexOf('<head>')).replace(re, function(match, p1, p2, p3) { 
