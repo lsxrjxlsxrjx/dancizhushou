@@ -933,6 +933,41 @@ window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); 
 
 function openCloudSync() { document.getElementById('cloudSyncModal').classList.add('show'); }
 
+function normalizeGithubRepoPath(value) {
+  let v = (value || '').trim();
+  v = v.replace(/^https?:\/\/github\.com\//i, '');
+  v = v.replace(/^git@github\.com:/i, '');
+  v = v.replace(/[?#].*$/, '').replace(/\/+$/, '').replace(/\.git$/i, '');
+  const parts = v.split('/').filter(Boolean);
+  return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : v;
+}
+
+function normalizeGithubToken(value) {
+  let v = (value || '').trim().replace(/[\u200B-\u200D\uFEFF]/g, '');
+  v = v.replace(/^Authorization:\s*/i, '').replace(/^Bearer\s+/i, '');
+  return v.replace(/\s+/g, '');
+}
+
+function getGithubCloudConfig() {
+  const repoPath = normalizeGithubRepoPath(config.gistId);
+  const githubToken = normalizeGithubToken(config.githubToken);
+  if(!repoPath || !githubToken) throw new Error('请先在设置中配置 GitHub 仓库和 Token');
+  if(!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repoPath)) throw new Error('GitHub 仓库名格式应为 用户名/仓库名，例如 lsxrjxlsxrjx/my-word');
+  if(!/^[\x21-\x7E]+$/.test(githubToken)) throw new Error('Token 包含浏览器请求头不允许的字符，请重新复制 GitHub Token');
+  config.gistId = repoPath;
+  config.githubToken = githubToken;
+  localStorage.setItem('vocab_gistId', repoPath);
+  localStorage.setItem('vocab_githubToken', githubToken);
+  return { repoPath, githubToken };
+}
+
+function cloudFetchErrorMessage(e) {
+  if(e && e.name === 'TypeError' && /fetch/i.test(e.message || '')) {
+    return '请求没有成功发到 GitHub。请检查网络是否能访问 api.github.com，或浏览器插件/代理是否拦截 GitHub API；也可以重新保存一次 GitHub Token 后再试';
+  }
+  return e.message || String(e);
+}
+
 async function doCloudUpload() {
   const repoPath = config.gistId; // 借用 gistId 变量存仓库路径
   if(!repoPath || !config.githubToken) return toast('请先在设置中配置 GitHub 仓库和 Token');
@@ -975,18 +1010,17 @@ async function doCloudUpload() {
   }
 }
 async function doCloudUpload() {
-  const repoPath = config.gistId; 
-  if(!repoPath || !config.githubToken) return toast('请先在设置中配置 GitHub 仓库和 Token');
   const gProg = document.getElementById('globalProgress'), gText = document.getElementById('globalProgressText');
   gProg.style.display = 'block'; gText.textContent = '正在覆盖上传到 GitHub 仓库...';
   try {
+      const { repoPath, githubToken } = getGithubCloudConfig();
       const url = `https://api.github.com/repos/${repoPath}/contents/vocab_data.json`;
       
-      // 1. 获取当前文件的 SHA 标识（加入时间戳和 no-cache 彻底击穿浏览器缓存）
+      // 1. 获取当前文件的 SHA 标识（加入时间戳击穿浏览器缓存）
       let sha = '';
       const getResp = await fetch(url + '?t=' + Date.now(), { 
           headers: { 
-              'Authorization': `Bearer ${config.githubToken}`
+              'Authorization': `Bearer ${githubToken}`
           } 
       });
       
@@ -1007,7 +1041,7 @@ async function doCloudUpload() {
           method: 'PUT',
           headers: { 
               'Accept': 'application/vnd.github.v3+json',
-              'Authorization': `Bearer ${config.githubToken}`,
+              'Authorization': `Bearer ${githubToken}`,
               'Content-Type': 'application/json' 
           },
           body: JSON.stringify(payload)
@@ -1022,8 +1056,9 @@ async function doCloudUpload() {
       lastSaveTime = fmtNow(); markClean(); document.getElementById('lastSaveTime').textContent = lastSaveTime;
       closeModal('cloudSyncModal');
   } catch(e) {
-      toast('❌ 上传失败: ' + e.message); log('上传失败: ' + e.message);
-      if(e.message.includes('sha')) {
+      const msg = cloudFetchErrorMessage(e);
+      toast('❌ 上传失败: ' + msg); log('上传失败: ' + msg);
+      if((e.message || '').includes('sha')) {
           alert('【同步提示】\n获取不到指纹。请检查 GitHub 里的文件名是不是严格的全小写 vocab_data.json！\n如果确认无误，请先点一次【从云端下载】同步状态，然后再点上传。');
       }
   } finally {
@@ -1032,18 +1067,18 @@ async function doCloudUpload() {
 }
 
 async function doCloudDownload() {
-  const repoPath = config.gistId; // 借用 gistId 变量存仓库路径
-  if(!repoPath || !config.githubToken) return toast('请先在设置中配置 GitHub 仓库和 Token');
+  try { getGithubCloudConfig(); } catch(e) { return toast('❌ 下载失败: ' + cloudFetchErrorMessage(e)); }
   if(!confirm('下载将覆盖本地所有词汇和设置，确定继续吗？')) return;
   const gProg = document.getElementById('globalProgress'), gText = document.getElementById('globalProgressText');
   gProg.style.display = 'block'; gText.textContent = '正在从 GitHub 仓库下载...';
   try {
+      const { repoPath, githubToken } = getGithubCloudConfig();
       // 突破1MB限制的神奇请求头：application/vnd.github.v3.raw，直接返回纯文本
       const resp = await fetch(`https://api.github.com/repos/${repoPath}/contents/vocab_data.json`, {
           method: 'GET',
           headers: { 
               'Accept': 'application/vnd.github.v3.raw',
-              'Authorization': `Bearer ${config.githubToken}`
+              'Authorization': `Bearer ${githubToken}`
           }
       });
       if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -1065,7 +1100,8 @@ async function doCloudDownload() {
       toast('✅ 从仓库下载成功'); log(`从云端下载了 ${words.length} 个单词`);
       closeModal('cloudSyncModal');
   } catch(e) {
-      toast('❌ 下载失败: ' + e.message); log('下载失败: ' + e.message);
+      const msg = cloudFetchErrorMessage(e);
+      toast('❌ 下载失败: ' + msg); log('下载失败: ' + msg);
   } finally {
        if(TaskManager.processing.length===0 && TaskManager.queue.length===0) gProg.style.display = 'none'; else TaskManager.render();
   }
@@ -2199,8 +2235,10 @@ function saveSettings() {
   config.pPrompt=document.getElementById('cfgPPrompt').value||DEFAULT_P_PROMPT;
   config.fPrompt=document.getElementById('cfgFPrompt').value||DEFAULT_F_PROMPT;
   
-  config.gistId=document.getElementById('cfgGistId').value.trim();
-  config.githubToken=document.getElementById('cfgGithubToken').value.trim();
+  config.gistId=normalizeGithubRepoPath(document.getElementById('cfgGistId').value);
+  config.githubToken=normalizeGithubToken(document.getElementById('cfgGithubToken').value);
+  document.getElementById('cfgGistId').value=config.gistId;
+  document.getElementById('cfgGithubToken').value=config.githubToken;
   
   // 安全策略：所有密钥存入本地存储 localStorage
   localStorage.setItem('vocab_apiKey', config.apiKey);
