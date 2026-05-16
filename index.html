@@ -215,7 +215,6 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 /* 句子追问可点击高亮样式 */
 .clickable-sent { color: #3498db; border-bottom: 1px dashed #3498db; cursor: pointer; transition: all .2s; font-weight: bold; }
 .clickable-sent:hover { background: rgba(52,152,219,0.1); color: #2980b9; }
-.highlight-sent { color: #2980b9; background: rgba(52,152,219,0.12); border-bottom: 1px dashed #3498db; font-weight: bold; }
 
 /* AI Loading Animation */
 .ai-think { display: inline-block; color: var(--pl); font-weight: bold; animation: pulse 1.5s infinite; }
@@ -1319,22 +1318,13 @@ function enhanceAnalysisText(box, mode, ctx = {}) {
       labelSpan.textContent = label;
       box.appendChild(labelSpan);
 
-      let textSpan = document.createElement('span');
-      const textIsFollowTarget = mode === 'writing';
-      textSpan.className = textIsFollowTarget ? 'clickable-sent' : 'highlight-sent';
-      textSpan.title = textIsFollowTarget ? '点击针对此句进行AI追问' : '';
-      textSpan.textContent = content;
       const nearbyLines = array.slice(Math.max(0, index - 2), Math.min(array.length, index + 3)).join('\n');
       const followContext = mode === 'writing'
         ? `批改类型：${ctx.mode || ''}\n题目：${ctx.topic || ''}\n用户全文：${ctx.answer || ''}\n当前关注：${label}${clean}\n相关批改片段：\n${nearbyLines}\n\n请围绕当前关注句，并结合用户原文、推荐表达或推荐译文回答追问。`
         : clean;
-      if (textIsFollowTarget) {
-        textSpan.setAttribute('data-sent', followContext);
-        textSpan.onclick = function() { openFollowUp(this.getAttribute('data-sent'), `${label}${clean}`); };
-      }
       labelSpan.setAttribute('data-sent', followContext);
       labelSpan.onclick = function() { openFollowUp(this.getAttribute('data-sent'), `${label}${clean}`); };
-      box.appendChild(textSpan);
+      box.appendChild(document.createTextNode(content));
     } else {
       box.appendChild(document.createTextNode(line));
     }
