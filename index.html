@@ -197,6 +197,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 .test-full-anno .av { color:var(--text); }
 
 /* Import Tabs & Para 解析 & Flex布局绑定 */
+#importModal .md { resize: both; width: min(600px, calc(100vw - 32px)); max-width: calc(100vw - 32px); }
 #importModal .mb { display: flex; flex-direction: column; padding-bottom: 20px; }
 .imp-tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 14px; flex-shrink: 0; }
 .imp-tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; font-weight: bold; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .2s; font-size: 0.9rem;}
@@ -415,7 +416,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 <div class="mo" id="cloudSyncModal"><div class="md" style="max-width: 400px; min-height: auto;">
   <div class="mh"><h2>☁️ 云同步</h2><button class="mc" onclick="closeModal('cloudSyncModal')">×</button></div>
   <div class="mb" style="display:flex; flex-direction:column; gap:16px; padding: 24px 20px;">
-     <p style="font-size:0.85rem; color:var(--muted); line-height: 1.5;">请确保在“设置”中配置了正确的 GitHub Gist ID 和 Token。<br>⚠️ 注意：上传会覆盖云端数据，下载会覆盖本地数据。</p>
+     <p style="font-size:0.85rem; color:var(--muted); line-height: 1.5;">请确保在“设置”中配置了正确的 GitHub 仓库名和 Token。<br>⚠️ 注意：上传会覆盖云端数据，下载会覆盖本地数据。</p>
      <button class="ib" style="background:var(--green); padding: 12px; font-size: 1rem;" onclick="doCloudDownload()">☁️ 从云端下载数据</button>
      <button class="ib" style="background:var(--accent); padding: 12px; font-size: 1rem;" onclick="doCloudUpload()">☁️ 覆盖上传到云端</button>
   </div>
@@ -672,6 +673,7 @@ var paraExecId = 0;
 var fuExecId = 0;
 var currentWordPopupId = 0;
 var lastWordPopupTime = 0; // 防抖时间锁
+var LOCAL_CACHE_KEY = 'vocab_local_cache_v1';
 
 // 统一过滤状态
 var fState = { today: false, wrong: false, none: false, stMin: 0, stMax: 5, ebMin: 0, ebMax: 7 };
@@ -687,10 +689,7 @@ function loadEmbedded() {
     if(!rawData) return;
     const d = JSON.parse(rawData);
     words = d.words || [];
-    words.forEach(w => {
-      if (w.wrongCount === undefined) w.wrongCount = 0;
-      if (w.note === undefined) w.note = ""; 
-    });
+    normalizeWords();
 
     config = {
       apiUrl: d.config?.apiUrl || '', apiKey: d.config?.apiKey || '', modelId: d.config?.modelId || '', prompt: d.config?.prompt || DEFAULT_PROMPT,
@@ -727,6 +726,59 @@ function loadEmbedded() {
     applyUISize(config.uiSize);
     lastSaveTime = d.lastSaveTime || '';
   } catch(e) { log('读取嵌入数据失败: '+e.message); }
+}
+
+function normalizeWords() {
+  words.forEach(w => {
+    if (w.wrongCount === undefined) w.wrongCount = 0;
+    if (w.note === undefined) w.note = "";
+  });
+}
+
+function parseSavedAt(value) {
+  if (!value) return 0;
+  const ts = Date.parse(String(value).replace(' ', 'T'));
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+function saveLocalCache() {
+  try {
+    const data = { words, config: getSafeConfig(), lastSaveTime, localSavedAt: Date.now() };
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(data));
+  } catch(e) {
+    console.warn('[Vocab] 本地缓存写入失败:', e);
+  }
+}
+
+function loadLocalCache() {
+  try {
+    const raw = localStorage.getItem(LOCAL_CACHE_KEY);
+    if(!raw) return;
+    const cached = JSON.parse(raw);
+    if(!cached || !Array.isArray(cached.words)) return;
+
+    const cachedDataStamp = parseSavedAt(cached.lastSaveTime);
+    const cacheStamp = cached.localSavedAt || cachedDataStamp;
+    const embeddedStamp = parseSavedAt(lastSaveTime);
+    if(words.length && embeddedStamp && cachedDataStamp && cachedDataStamp < embeddedStamp) return;
+    if(words.length && embeddedStamp && cacheStamp < embeddedStamp) return;
+
+    const secrets = {
+      apiKey: config.apiKey || '',
+      qApiKey: config.qApiKey || '',
+      gistId: config.gistId || '',
+      githubToken: config.githubToken || ''
+    };
+
+    words = cached.words;
+    normalizeWords();
+    if(cached.config) config = { ...config, ...cached.config, ...secrets };
+    applyUISize(config.uiSize || 'm');
+    lastSaveTime = cached.lastSaveTime || lastSaveTime || '';
+    log(`已从本地缓存恢复 ${words.length} 个单词`);
+  } catch(e) {
+    log('读取本地缓存失败: ' + e.message);
+  }
 }
 
 function calcNextDate(level) {
@@ -875,8 +927,8 @@ async function saveFile() {
   }
 }
 function dlFile(content, name) { const blob = new Blob([content], { type: 'text/html;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url); markClean(); toast('✅ 已下载'); log(`下载: ${name}`); }
-function markDirty() { dirty = true; document.getElementById('dirtyDot').classList.add('on'); }
-function markClean() { dirty = false; document.getElementById('dirtyDot').classList.remove('on'); document.getElementById('lastSaveTime').textContent = lastSaveTime; }
+function markDirty() { dirty = true; saveLocalCache(); document.getElementById('dirtyDot').classList.add('on'); }
+function markClean() { dirty = false; saveLocalCache(); document.getElementById('dirtyDot').classList.remove('on'); document.getElementById('lastSaveTime').textContent = lastSaveTime; }
 window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
 function openCloudSync() { document.getElementById('cloudSyncModal').classList.add('show'); }
@@ -914,7 +966,7 @@ async function doCloudUpload() {
       if(!putResp.ok) throw new Error(`HTTP ${putResp.status}`);
       
       toast('✅ 云端仓库上传成功'); log('云端仓库上传成功 (Repo API)');
-      markClean(); lastSaveTime = fmtNow(); document.getElementById('lastSaveTime').textContent = lastSaveTime;
+      lastSaveTime = fmtNow(); markClean(); document.getElementById('lastSaveTime').textContent = lastSaveTime;
       closeModal('cloudSyncModal');
   } catch(e) {
       toast('❌ 上传失败: ' + e.message); log('上传失败: ' + e.message);
@@ -968,7 +1020,7 @@ async function doCloudUpload() {
       }
       
       toast('✅ 云端仓库上传成功'); log('云端仓库上传成功 (Repo API)');
-      markClean(); lastSaveTime = fmtNow(); document.getElementById('lastSaveTime').textContent = lastSaveTime;
+      lastSaveTime = fmtNow(); markClean(); document.getElementById('lastSaveTime').textContent = lastSaveTime;
       closeModal('cloudSyncModal');
   } catch(e) {
       toast('❌ 上传失败: ' + e.message); log('上传失败: ' + e.message);
@@ -2291,7 +2343,7 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.key==='s') { e.preventDefault(); saveFile(); } });
 
-loadEmbedded(); document.getElementById('lastSaveTime').textContent = lastSaveTime || '未保存';
+loadEmbedded(); loadLocalCache(); document.getElementById('lastSaveTime').textContent = lastSaveTime || '未保存';
 
 // ==== 修复：强制初始化界面为标准状态，覆盖可能被错误保存进去的 DOM 样式 ====
 reciteMode = false;
