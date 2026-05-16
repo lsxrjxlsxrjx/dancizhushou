@@ -206,6 +206,11 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 .imp-pane.active { display: flex; animation: fi .3s ease; }
 #imp-t-para .ia { flex-shrink: 0; min-height: 60px; height: 120px; }
 .para-box { flex: 1; font-family: var(--f); font-size: 0.95rem; line-height: 1.8; color: var(--text); background: var(--bg); border: 1px dashed var(--border); border-radius: 8px; padding: 16px; margin-top: 14px; white-space: pre-wrap; word-break: break-word; overflow-y: auto; min-height: 150px; cursor: text; }
+.writing-tools { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px; flex-shrink:0; }
+.writing-tools label { font-size:.85rem; color:var(--pl); font-weight:700; }
+.writing-tools select { flex:1; min-width:120px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); font-family:var(--f); }
+#writingTopic { min-height:70px; max-height:150px; }
+#writingAnswer { flex:1; min-height:160px; max-height:none; }
 
 /* 句子追问可点击高亮样式 */
 .clickable-sent { color: #3498db; border-bottom: 1px dashed #3498db; cursor: pointer; transition: all .2s; font-weight: bold; }
@@ -366,6 +371,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
     <div class="imp-tabs">
       <div class="imp-tab active" onclick="switchImpTab('imp-t-word', this)">📝 词汇查询/导入</div>
       <div class="imp-tab" onclick="switchImpTab('imp-t-para', this)">📄 段落解析</div>
+      <div class="imp-tab" onclick="switchImpTab('imp-t-writing', this)">✍️ 写作批改</div>
     </div>
     
     <div id="imp-t-word" class="imp-pane active" style="overflow-y:auto;">
@@ -394,6 +400,20 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
       </div>
       <button class="ib" style="background:var(--accent); margin-top:8px; flex-shrink:0;" onclick="doAnalyze()">✨ 开始逐句深度解析</button>
       <div id="paraStreamBox" class="para-box" style="display:none;"></div>
+    </div>
+
+    <div id="imp-t-writing" class="imp-pane">
+      <div class="writing-tools">
+        <label for="writingMode">批改类型</label>
+        <select id="writingMode">
+          <option value="作文">作文批改</option>
+          <option value="翻译">翻译批改</option>
+        </select>
+      </div>
+      <textarea class="ia" id="writingTopic" placeholder="请输入作文/翻译题目..."></textarea>
+      <textarea class="ia" id="writingAnswer" placeholder="在这里输入你的写作或翻译答案..."></textarea>
+      <button class="ib" style="background:var(--accent); margin-top:8px; flex-shrink:0;" onclick="doWritingReview()">📝 开始六级标准批改</button>
+      <div id="writingStreamBox" class="para-box" style="display:none;"></div>
     </div>
 
   </div>
@@ -464,19 +484,27 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
       <div class="sr" style="margin-bottom:14px"><button onclick="testImportApi()">🧪 测试导入 API</button></div>
       <div id="testResultImport"></div>
 
-      <div style="font-size:.9rem;font-weight:700;color:var(--green);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--green)">🔍 查询 API（流式）</div>
+      <div style="font-size:.9rem;font-weight:700;color:var(--green);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--green)">🔍 查询单词 API（流式）</div>
       <div class="sg"><label>API 地址</label><input type="text" id="cfgQUrl"></div>
       <div class="sg"><label>API 密钥</label><div style="display:flex;gap:6px"><input type="password" id="cfgQKey" style="flex:1" placeholder="填写的密钥将强制保存在本地缓存"><button onclick="toggleVis('cfgQKey',this)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:.85rem;flex-shrink:0">👁</button></div></div>
       <div class="sg"><label>模型 ID</label><input type="text" id="cfgQModel"></div>
       <div class="sg"><label>单词查询 Prompt</label><textarea id="cfgQPrompt"></textarea></div>
-      <div class="sg"><label>段落解析 Prompt</label><textarea id="cfgPPrompt"></textarea></div>
-      <div class="sg"><label>追问解析 Prompt</label><textarea id="cfgFPrompt"></textarea></div>
       <div class="sg" style="display:flex;align-items:center;gap:10px;margin:4px 0 14px">
         <label style="margin:0">单词查询完成自动发音</label>
         <label style="position:relative;display:inline-block;width:44px;height:24px;margin:0"><input type="checkbox" id="cfgAutoPronounce" style="opacity:0;width:0;height:0" onchange="syncUI('cfgAutoPronounce','apTrack','apKnob')"><span id="apTrack" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span><span id="apKnob" style="position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.3s"></span></label>
       </div>
       <div class="sr" style="margin-bottom:14px"><button onclick="testQueryApi()">🧪 测试查询 API</button></div>
       <div id="testResultQuery"></div>
+
+      <div style="font-size:.9rem;font-weight:700;color:var(--accent);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--accent)">📄 解析 API（流式）</div>
+      <div class="sg"><label>API 地址</label><input type="text" id="cfgParseUrl"></div>
+      <div class="sg"><label>API 密钥</label><div style="display:flex;gap:6px"><input type="password" id="cfgParseKey" style="flex:1" placeholder="段落解析、追问、写作批改使用此密钥"><button onclick="toggleVis('cfgParseKey',this)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:.85rem;flex-shrink:0">👁</button></div></div>
+      <div class="sg"><label>模型 ID</label><input type="text" id="cfgParseModel"></div>
+      <div class="sg"><label>段落解析 Prompt</label><textarea id="cfgPPrompt"></textarea></div>
+      <div class="sg"><label>追问解析 Prompt</label><textarea id="cfgFPrompt"></textarea></div>
+      <div class="sg"><label>写作/翻译批改 Prompt</label><textarea id="cfgWPrompt"></textarea></div>
+      <div class="sr" style="margin-bottom:14px"><button onclick="testParseApi()">🧪 测试解析 API</button></div>
+      <div id="testResultParse"></div>
 
       <div style="font-size:.9rem;font-weight:700;color:var(--pl);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--border)">☁️ 云端同步设置 (GitHub 官方仓库 API)</div>
       <div class="sg"><label>GitHub 仓库名 (格式: 用户名/仓库名)</label><input type="text" id="cfgGistId" placeholder="例如: lsxrjxlsxrjx/my-word"></div>
@@ -648,6 +676,8 @@ var DEFAULT_P_PROMPT = `你是一个资深的英语教学专家。请对用户�
 
 var DEFAULT_F_PROMPT = `用户正在阅读英语句子："{sent}"。\n用户的疑问是："{question}"。\n请用中文简短、专业地解答，直接给出解析，不要客套。`;
 
+var DEFAULT_W_PROMPT = `你是大学英语六级考试（CET-6）的资深阅卷老师。请根据用户选择的批改类型，对用户的答案进行严格、具体、可操作的中文批改。\n\n批改类型：{mode}\n题目：{topic}\n用户答案：{answer}\n\n如果批改类型是“作文”：\n请按以下格式输出：\n【总评与分数】\n分数：（按六级写作标准给出百分制分数，并简述理由）\n总体评价：（内容、结构、语言、词汇、语法）\n\n【逐句批改】\n1. 我的原句：（摘录用户原句）\n   问题：（指出语法、搭配、逻辑、表达或中式英语问题）\n   推荐表达：（给出更自然、更符合六级作文的英文表达）\n   说明：（简短解释为什么这样改）\n\n【提升建议】\n（给出2-4条具体建议）\n\n如果批改类型是“翻译”：\n请按以下格式输出：\n【总评与分数】\n分数：（按六级翻译标准给出百分制分数，并简述理由）\n总体评价：（准确性、完整性、语法和表达）\n\n【逐句批改】\n1. 原题句：（根据题目拆分出的中文句子或意群）\n   我的表达：（对应的用户译文）\n   问题：（逐句指出错译、漏译、搭配、语法或表达问题）\n   推荐译文：（给出更准确自然的六级翻译表达）\n\n【标准翻译答案】\n（给出一版完整、自然、符合六级水平的英文译文）\n\n请直接输出批改内容，不要使用表格，不要使用复杂Markdown标题。`;
+
 // L0=0天(当日), L1=1天后, L2=2天后...
 var EB_DAYS = [0, 1, 2, 4, 7, 15, 30, 999]; 
 
@@ -671,9 +701,11 @@ var lastClickedId = null;
 // ====== 并发控制流ID ======
 var paraExecId = 0;
 var fuExecId = 0;
+var writingExecId = 0;
 var currentWordPopupId = 0;
 var lastWordPopupTime = 0; // 防抖时间锁
 var LOCAL_CACHE_KEY = 'vocab_local_cache_v1';
+var currentFuSent = '';
 
 // 统一过滤状态
 var fState = { today: false, wrong: false, none: false, stMin: 0, stMax: 5, ebMin: 0, ebMax: 7 };
@@ -694,7 +726,8 @@ function loadEmbedded() {
     config = {
       apiUrl: d.config?.apiUrl || '', apiKey: d.config?.apiKey || '', modelId: d.config?.modelId || '', prompt: d.config?.prompt || DEFAULT_PROMPT,
       qApiUrl: d.config?.qApiUrl || '', qApiKey: d.config?.qApiKey || '', qModelId: d.config?.qModelId || '', qPrompt: d.config?.qPrompt || DEFAULT_QUERY_PROMPT,
-      pPrompt: d.config?.pPrompt || DEFAULT_P_PROMPT, fPrompt: d.config?.fPrompt || DEFAULT_F_PROMPT,
+      parseApiUrl: d.config?.parseApiUrl || d.config?.qApiUrl || '', parseApiKey: d.config?.parseApiKey || '', parseModelId: d.config?.parseModelId || d.config?.qModelId || '',
+      pPrompt: d.config?.pPrompt || DEFAULT_P_PROMPT, fPrompt: d.config?.fPrompt || DEFAULT_F_PROMPT, wPrompt: d.config?.wPrompt || DEFAULT_W_PROMPT,
       gistId: d.config?.gistId || '', githubToken: d.config?.githubToken || '',
       timestamp: !!d.config?.timestamp, concurrencyLimit: d.config?.concurrencyLimit || 3, autoPronounce: d.config?.autoPronounce !== false,
       reciteShowMeaning: d.config?.reciteShowMeaning !== false, 
@@ -720,9 +753,11 @@ function loadEmbedded() {
     // 安全策略：强制从本地浏览器 localStorage 提取密钥填充
     config.apiKey = localStorage.getItem('vocab_apiKey') || config.apiKey || '';
     config.qApiKey = localStorage.getItem('vocab_qApiKey') || config.qApiKey || '';
+    config.parseApiKey = localStorage.getItem('vocab_parseApiKey') || config.parseApiKey || config.qApiKey || '';
     config.gistId = localStorage.getItem('vocab_gistId') || config.gistId || '';
     config.githubToken = localStorage.getItem('vocab_githubToken') || config.githubToken || '';
     
+    ensureConfigDefaults();
     applyUISize(config.uiSize);
     lastSaveTime = d.lastSaveTime || '';
   } catch(e) { log('读取嵌入数据失败: '+e.message); }
@@ -733,6 +768,13 @@ function normalizeWords() {
     if (w.wrongCount === undefined) w.wrongCount = 0;
     if (w.note === undefined) w.note = "";
   });
+}
+
+function ensureConfigDefaults() {
+  config.parseApiUrl = config.parseApiUrl || config.qApiUrl || '';
+  config.parseApiKey = config.parseApiKey || config.qApiKey || '';
+  config.parseModelId = config.parseModelId || config.qModelId || '';
+  config.wPrompt = config.wPrompt || DEFAULT_W_PROMPT;
 }
 
 function parseSavedAt(value) {
@@ -766,6 +808,7 @@ function loadLocalCache() {
     const secrets = {
       apiKey: config.apiKey || '',
       qApiKey: config.qApiKey || '',
+      parseApiKey: config.parseApiKey || '',
       gistId: config.gistId || '',
       githubToken: config.githubToken || ''
     };
@@ -773,6 +816,7 @@ function loadLocalCache() {
     words = cached.words;
     normalizeWords();
     if(cached.config) config = { ...config, ...cached.config, ...secrets };
+    ensureConfigDefaults();
     applyUISize(config.uiSize || 'm');
     lastSaveTime = cached.lastSaveTime || lastSaveTime || '';
     log(`已从本地缓存恢复 ${words.length} 个单词`);
@@ -899,6 +943,7 @@ function getSafeConfig() {
   const sc = { ...config };
   sc.apiKey = '';
   sc.qApiKey = '';
+  sc.parseApiKey = '';
   sc.githubToken = '';
   return sc;
 }
@@ -1091,8 +1136,10 @@ async function doCloudDownload() {
       if(record.config) {
           let c = record.config;
           c.apiKey = config.apiKey; c.qApiKey = config.qApiKey;
+          c.parseApiKey = config.parseApiKey;
           c.gistId = config.gistId; c.githubToken = config.githubToken;
           config = { ...config, ...c };
+          ensureConfigDefaults();
           applyUISize(config.uiSize || 'm');
       }
       lastSaveTime = record.lastSaveTime || fmtNow();
@@ -1132,6 +1179,13 @@ async function testQueryApi() {
   catch(e) { r.innerHTML=`<div class="tr no">❌ ${esc(e.message)}</div>`; log(`查询 API 测试失败: ${e.message}`); } 
 }
 
+async function testParseApi() {
+  const r=document.getElementById('testResultParse'); r.innerHTML='<div class="tr" style="background:#fff3e0;color:#e65100">测试解析 API 中...</div>';
+  saveSettings();
+  try { await quickTest(config.parseApiUrl, config.parseApiKey, config.parseModelId); r.innerHTML='<div class="tr ok">✅ 连接成功</div>'; log('解析 API 测试成功'); }
+  catch(e) { r.innerHTML=`<div class="tr no">❌ ${esc(e.message)}</div>`; log(`解析 API 测试失败: ${e.message}`); }
+}
+
 async function callAI(word) {
   const prompt = config.prompt.replace(/\{word\}/g, word); const url = config.apiUrl; const isResp = url.includes('/responses');
   const body = isResp ? { model: config.modelId, input: [{ role: 'user', content: prompt }] } : { model: config.modelId, messages: [{ role: 'user', content: prompt }], temperature: 0.3 };
@@ -1154,6 +1208,26 @@ async function callAIStream(word, onChunk) {
     const { done, value } = await reader.read(); if (done) break;
     buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop(); 
     for (const line of lines) { const trimmed = line.trim(); if (!trimmed || trimmed.startsWith('event:') || trimmed === 'data: [DONE]') continue; if (trimmed.startsWith('data:')) { const jsonStr = trimmed.slice(5).trim(); if (!jsonStr || jsonStr === '[DONE]') continue; try { const evt = JSON.parse(jsonStr); if (evt.type === 'response.output_text.delta' && evt.delta) onChunk(evt.delta); else if (evt.choices?.[0]?.delta?.content) onChunk(evt.choices[0].delta.content); } catch(e) {} } }
+  }
+}
+
+async function streamParsePrompt(prompt, onChunk) {
+  const url = config.parseApiUrl;
+  const isResp = url.includes('/responses');
+  const body = isResp ? { model: config.parseModelId, input: [{ role: 'user', content: prompt }], stream: true } : { model: config.parseModelId, messages: [{ role: 'user', content: prompt }], temperature: 0.3, stream: true };
+  const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.parseApiKey }, body: JSON.stringify(body) });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const reader = resp.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read(); if (done) break;
+    buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop();
+    for (const line of lines) {
+      const trimmed = line.trim(); if (!trimmed || trimmed.startsWith('event:') || trimmed === 'data: [DONE]') continue;
+      if (trimmed.startsWith('data:')) {
+        const jsonStr = trimmed.slice(5).trim(); if (!jsonStr || jsonStr === '[DONE]') continue;
+        try { const evt = JSON.parse(jsonStr); if (evt.type === 'response.output_text.delta' && evt.delta) onChunk(evt.delta); else if (evt.choices?.[0]?.delta?.content) onChunk(evt.choices[0].delta.content); } catch(e) {}
+      }
+    }
   }
 }
 
@@ -1195,16 +1269,28 @@ function doQuery() {
 
 function doImportWords() {
   const items = getInputWords(); if (!items.length) return;
-  const existing = new Set(words.map(w=>w.word.toLowerCase())); const unique = items.filter(w=>!existing.has(w.toLowerCase()));
-  if (!unique.length) { toast('均已存在'); return; }
-  document.getElementById('importText').value = ''; const today = fmtNow().slice(0,10);
+  const today = fmtNow().slice(0,10);
+  const seen = new Set();
+  const unique = [];
+  let updatedDup = 0;
+  items.forEach(w => {
+    const key = w.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    const old = words.find(x => x.word.toLowerCase() === key);
+    if (old) { old.date = today; updatedDup++; }
+    else unique.push(w);
+  });
+  if (updatedDup) { markDirty(); renderWords(); log(`更新了 ${updatedDup} 个重复词日期`); }
+  if (!unique.length) { document.getElementById('importText').value = ''; toast(`已更新 ${updatedDup} 个重复词日期`); return; }
+  document.getElementById('importText').value = '';
   const entries = unique.map(w => { const entry = { id:gid(), word:w, date:today, stars:0, annotation:null, status:'loading', showAnno:false, ebLevel:0, nextReviewDate:today, wrongCount:0, note:'' }; words.push(entry); return entry; }); renderWords();
   const tasks = entries.map(entry => ({
     id: gid(), word: entry.word, type: 'import', entry, fn: async () => {
       try { entry.annotation = await callAI(entry.word); entry.status = 'loaded'; log(`✅ 导入成功: ${entry.word}`); } catch(e) { entry.status = 'error'; log(`❌ 导入失败 [${entry.word}]: ${e.message}`); } markDirty(); renderWords();
     }
   }));
-  TaskManager.add(tasks); toast(`已排队导入 ${unique.length} 个`); setTimeout(()=>closeModal('importModal'), 400);
+  TaskManager.add(tasks); toast(`已排队导入 ${unique.length} 个` + (updatedDup ? `，更新 ${updatedDup} 个重复词日期` : '')); setTimeout(()=>closeModal('importModal'), 400);
 }
 
 // ==== 段落解析相关 ====
@@ -1212,6 +1298,44 @@ function switchImpTab(id, el) {
   document.querySelectorAll('.imp-tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.imp-pane').forEach(p=>p.classList.remove('active'));
   el.classList.add('active'); document.getElementById(id).classList.add('active');
+}
+
+function enhanceAnalysisText(box, mode, ctx = {}) {
+  const pureText = box.textContent;
+  box.innerHTML = '';
+  const labels = ['我的原句：', '我的表达：', '推荐表达：', '推荐译文：', '原句：'];
+  pureText.split('\n').forEach((line, index, array) => {
+    let label = labels.find(l => line.indexOf(l) !== -1);
+    if (label) {
+      let idx = line.indexOf(label);
+      let prefix = line.substring(0, idx);
+      let content = line.substring(idx + label.length);
+      let clean = content.trim();
+      if (prefix) box.appendChild(document.createTextNode(prefix));
+
+      let labelSpan = document.createElement('span');
+      labelSpan.className = 'clickable-sent';
+      labelSpan.textContent = label;
+      box.appendChild(labelSpan);
+
+      let textSpan = document.createElement('span');
+      textSpan.className = 'clickable-sent';
+      textSpan.title = '点击针对此句进行AI追问';
+      textSpan.textContent = content;
+      const nearbyLines = array.slice(Math.max(0, index - 2), Math.min(array.length, index + 3)).join('\n');
+      const followContext = mode === 'writing'
+        ? `批改类型：${ctx.mode || ''}\n题目：${ctx.topic || ''}\n用户全文：${ctx.answer || ''}\n当前关注：${label}${clean}\n相关批改片段：\n${nearbyLines}\n\n请围绕当前关注句，并结合用户原文、推荐表达或推荐译文回答追问。`
+        : clean;
+      textSpan.setAttribute('data-sent', followContext);
+      textSpan.onclick = function() { openFollowUp(this.getAttribute('data-sent'), `${label}${clean}`); };
+      labelSpan.setAttribute('data-sent', followContext);
+      labelSpan.onclick = textSpan.onclick;
+      box.appendChild(textSpan);
+    } else {
+      box.appendChild(document.createTextNode(line));
+    }
+    if (index < array.length - 1) box.appendChild(document.createTextNode('\n'));
+  });
 }
 
 async function doAnalyze() {
@@ -1231,71 +1355,24 @@ async function doAnalyze() {
 
   try {
       const prompt = config.pPrompt.replace(/\{text\}/g, text);
-      const url = config.qApiUrl; const isResp = url.includes('/responses');
-      const body = isResp ? { model: config.qModelId, input: [{ role: 'user', content: prompt }], stream: true } : { model: config.qModelId, messages: [{ role: 'user', content: prompt }], temperature: 0.3, stream: true };
-      
-      const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.qApiKey }, body: JSON.stringify(body) });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const reader = resp.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
-      
-      while (true) {
+      await streamParsePrompt(prompt, (delta) => {
           if (myExecId !== paraExecId) return;
-          const { done, value } = await reader.read(); if (done) break;
-          buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop(); 
-          for (const line of lines) { 
-              const trimmed = line.trim(); if (!trimmed || trimmed.startsWith('event:') || trimmed === 'data: [DONE]') continue; 
-              if (trimmed.startsWith('data:')) { 
-                  const jsonStr = trimmed.slice(5).trim(); if (!jsonStr || jsonStr === '[DONE]') continue; 
-                  try { const evt = JSON.parse(jsonStr); 
-                      let delta = '';
-                      if (evt.type === 'response.output_text.delta' && evt.delta) delta = evt.delta; 
-                      else if (evt.choices?.[0]?.delta?.content) delta = evt.choices[0].delta.content;
-                      
-                      if (delta) {
-                          if (isFirstChunk) {
-                              box.innerHTML = '';
-                              box.appendChild(contentNode);
-                              isFirstChunk = false;
-                          }
-                          fullText += delta;
-                          const isAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 30;
-                          contentNode.appendChild(document.createTextNode(delta));
-                          if(isAtBottom) box.scrollTop = box.scrollHeight;
-                      }
-                  } catch(e) {} 
-              } 
+          if (isFirstChunk) {
+              box.innerHTML = '';
+              box.appendChild(contentNode);
+              isFirstChunk = false;
           }
-      }
+          fullText += delta;
+          const isAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 30;
+          contentNode.appendChild(document.createTextNode(delta));
+          if(isAtBottom) box.scrollTop = box.scrollHeight;
+      });
       
       if(myExecId !== paraExecId) return;
 
       if(isFirstChunk) box.innerHTML = '<span style="color:var(--red)">⚠️ 解析完成，但API未返回有效内容。请检查密钥或网络。</span>';
       else {
-          // 后处理：仅将“原句：”替换为可点击的节点，安全操作DOM防注入
-          let pureText = box.textContent;
-          box.innerHTML = ''; 
-          pureText.split('\n').forEach((line, index, array) => {
-              let idx = line.indexOf('原句：');
-              if (idx !== -1) {
-                  let prefix = line.substring(0, idx);
-                  let sent = line.substring(idx + 3); 
-                  let pureSent = sent.trim();
-                  
-                  if (prefix) box.appendChild(document.createTextNode(prefix));
-                  
-                  let span = document.createElement('span');
-                  span.className = 'clickable-sent';
-                  span.title = '点击针对此句进行AI追问';
-                  span.setAttribute('data-sent', pureSent);
-                  span.onclick = function() { openFollowUp(this.getAttribute('data-sent')); };
-                  span.textContent = '原句：';
-                  box.appendChild(span);
-                  box.appendChild(document.createTextNode(sent));
-              } else {
-                  box.appendChild(document.createTextNode(line));
-              }
-              if (index < array.length - 1) box.appendChild(document.createTextNode('\n'));
-          });
+          enhanceAnalysisText(box, 'paragraph');
       }
       log('✅ 段落解析完成');
   } catch(e) {
@@ -1310,10 +1387,58 @@ async function doAnalyze() {
   }
 }
 
+async function doWritingReview() {
+  const mode = document.getElementById('writingMode').value;
+  const topic = document.getElementById('writingTopic').value.trim();
+  const answer = document.getElementById('writingAnswer').value.trim();
+  if(!topic) return toast('请输入题目');
+  if(!answer) return toast('请输入你的答案');
+  const box = document.getElementById('writingStreamBox');
+  box.style.display = 'block';
+  box.innerHTML = '<div class="ai-think">📝 AI 正在按六级标准批改中</div>';
+
+  const myExecId = ++writingExecId;
+  let isFirstChunk = true;
+  let contentNode = document.createElement('span');
+
+  try {
+    const prompt = config.wPrompt
+      .replace(/\{mode\}/g, mode)
+      .replace(/\{topic\}/g, topic)
+      .replace(/\{answer\}/g, answer);
+
+    await streamParsePrompt(prompt, (delta) => {
+      if (myExecId !== writingExecId) return;
+      if (isFirstChunk) {
+        box.innerHTML = '';
+        box.appendChild(contentNode);
+        isFirstChunk = false;
+      }
+      const isAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 30;
+      contentNode.appendChild(document.createTextNode(delta));
+      if(isAtBottom) box.scrollTop = box.scrollHeight;
+    });
+
+    if(myExecId !== writingExecId) return;
+    if(isFirstChunk) box.innerHTML = '<span style="color:var(--red)">⚠️ 批改完成，但API未返回有效内容。请检查密钥或网络。</span>';
+    else enhanceAnalysisText(box, 'writing', { mode, topic, answer });
+    log(`✅ ${mode}批改完成`);
+  } catch(e) {
+    if (myExecId === writingExecId) {
+      if (isFirstChunk) box.innerHTML = '';
+      const errNode = document.createElement('div');
+      errNode.style.color = 'var(--red)';
+      errNode.style.marginTop = '10px';
+      errNode.textContent = `❌ 批改中断: ${e.message}`;
+      box.appendChild(errNode);
+    }
+  }
+}
+
 // ==== 单句追问 (Follow-Up) 逻辑 ====
-function openFollowUp(sent) {
+function openFollowUp(sent, displayText) {
     currentFuSent = sent;
-    document.getElementById('fuSentence').textContent = sent;
+    document.getElementById('fuSentence').textContent = displayText || sent;
     document.getElementById('fuQuestion').value = '';
     document.getElementById('fuStreamBox').style.display = 'none';
     document.getElementById('fuStreamBox').innerHTML = '';
@@ -1335,40 +1460,17 @@ async function doFollowUp() {
     
     try {
         let prompt = config.fPrompt.replace(/\{sent\}/g, currentFuSent).replace(/\{question\}/g, q);
-        const url = config.qApiUrl; const isResp = url.includes('/responses');
-        const reqBody = isResp ? { model: config.qModelId, input: [{ role: 'user', content: prompt }], stream: true } : { model: config.qModelId, messages: [{ role: 'user', content: prompt }], temperature: 0.3, stream: true };
-        
-        const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.qApiKey }, body: JSON.stringify(reqBody) });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const reader = resp.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
-        
-        while (true) {
+        await streamParsePrompt(prompt, (delta) => {
             if (myExecId !== fuExecId) return;
-            const { done, value } = await reader.read(); if (done) break;
-            buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop(); 
-            for (const line of lines) { 
-                const trimmed = line.trim(); if (!trimmed || trimmed.startsWith('event:') || trimmed === 'data: [DONE]') continue; 
-                if (trimmed.startsWith('data:')) { 
-                    const jsonStr = trimmed.slice(5).trim(); if (!jsonStr || jsonStr === '[DONE]') continue; 
-                    try { const evt = JSON.parse(jsonStr); 
-                        let delta = '';
-                        if (evt.type === 'response.output_text.delta' && evt.delta) delta = evt.delta; 
-                        else if (evt.choices?.[0]?.delta?.content) delta = evt.choices[0].delta.content;
-                        
-                        if(delta) {
-                            if (isFirstChunk) {
-                                box.innerHTML = '';
-                                box.appendChild(contentNode);
-                                isFirstChunk = false;
-                            }
-                            const isAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 20;
-                            contentNode.appendChild(document.createTextNode(delta));
-                            if(isAtBottom) box.scrollTop = box.scrollHeight;
-                        }
-                    } catch(e) {} 
-                } 
+            if (isFirstChunk) {
+                box.innerHTML = '';
+                box.appendChild(contentNode);
+                isFirstChunk = false;
             }
-        }
+            const isAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 20;
+            contentNode.appendChild(document.createTextNode(delta));
+            if(isAtBottom) box.scrollTop = box.scrollHeight;
+        });
         
         if (myExecId === fuExecId && isFirstChunk) {
             box.innerHTML = '<span style="color:var(--red)">⚠️ API未返回有效内容，请检查网络、模型或密钥配置。</span>';
@@ -1672,9 +1774,14 @@ async function showWordPopup(word, x, y, autoSearch = true) {
 
 function importSingleWord(w) {
   const existing = words.find(x => x.word.toLowerCase() === w.toLowerCase());
-  if(existing) return toast(`「${w}」已存在于词库中`);
-  
   const today = fmtNow().slice(0,10);
+  if(existing) {
+    existing.date = today;
+    markDirty(); renderWords();
+    log(`更新重复词日期: ${existing.word}`);
+    return toast(`「${w}」已存在，已更新日期`);
+  }
+
   const entry = { id:gid(), word:w, date:today, stars:0, annotation:null, status:'loading', showAnno:false, ebLevel:0, nextReviewDate:today, wrongCount:0, note:'' }; 
   words.push(entry); renderWords();
   
@@ -2188,8 +2295,12 @@ function openSettings() {
 
   document.getElementById('cfgUrl').value=config.apiUrl; document.getElementById('cfgKey').value=config.apiKey; document.getElementById('cfgModel').value=config.modelId; document.getElementById('cfgPrompt').value=config.prompt;
   document.getElementById('cfgQUrl').value=config.qApiUrl; document.getElementById('cfgQKey').value=config.qApiKey; document.getElementById('cfgQModel').value=config.qModelId; document.getElementById('cfgQPrompt').value=config.qPrompt;
+  document.getElementById('cfgParseUrl').value=config.parseApiUrl || config.qApiUrl || '';
+  document.getElementById('cfgParseKey').value=config.parseApiKey || '';
+  document.getElementById('cfgParseModel').value=config.parseModelId || config.qModelId || '';
   document.getElementById('cfgPPrompt').value=config.pPrompt;
   document.getElementById('cfgFPrompt').value=config.fPrompt;
+  document.getElementById('cfgWPrompt').value=config.wPrompt || DEFAULT_W_PROMPT;
   
   // 更新为 GitHub Gist 设值
   document.getElementById('cfgGistId').value=config.gistId || ''; 
@@ -2232,8 +2343,10 @@ function saveSettings() {
 
   config.apiUrl=document.getElementById('cfgUrl').value.trim(); config.apiKey=document.getElementById('cfgKey').value.trim(); config.modelId=document.getElementById('cfgModel').value.trim(); config.prompt=document.getElementById('cfgPrompt').value||DEFAULT_PROMPT;
   config.qApiUrl=document.getElementById('cfgQUrl').value.trim(); config.qApiKey=document.getElementById('cfgQKey').value.trim(); config.qModelId=document.getElementById('cfgQModel').value.trim(); config.qPrompt=document.getElementById('cfgQPrompt').value||DEFAULT_QUERY_PROMPT;
+  config.parseApiUrl=document.getElementById('cfgParseUrl').value.trim(); config.parseApiKey=document.getElementById('cfgParseKey').value.trim(); config.parseModelId=document.getElementById('cfgParseModel').value.trim();
   config.pPrompt=document.getElementById('cfgPPrompt').value||DEFAULT_P_PROMPT;
   config.fPrompt=document.getElementById('cfgFPrompt').value||DEFAULT_F_PROMPT;
+  config.wPrompt=document.getElementById('cfgWPrompt').value||DEFAULT_W_PROMPT;
   
   config.gistId=normalizeGithubRepoPath(document.getElementById('cfgGistId').value);
   config.githubToken=normalizeGithubToken(document.getElementById('cfgGithubToken').value);
@@ -2243,6 +2356,7 @@ function saveSettings() {
   // 安全策略：所有密钥存入本地存储 localStorage
   localStorage.setItem('vocab_apiKey', config.apiKey);
   localStorage.setItem('vocab_qApiKey', config.qApiKey);
+  localStorage.setItem('vocab_parseApiKey', config.parseApiKey);
   localStorage.setItem('vocab_gistId', config.gistId);
   localStorage.setItem('vocab_githubToken', config.githubToken);
   
@@ -2321,10 +2435,12 @@ function handleJsonImport(e) {
         // 防覆盖，防止导入空密码把本地密码抹掉
         c.apiKey = config.apiKey;
         c.qApiKey = config.qApiKey;
+        c.parseApiKey = config.parseApiKey;
         c.gistId = config.gistId;
         c.githubToken = config.githubToken;
         
         config = { ...config, ...c };
+        ensureConfigDefaults();
         
         // 关键修复：导入后立即刷新 UI 状态
         applyUISize(config.uiSize || 'm');
