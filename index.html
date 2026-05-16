@@ -986,8 +986,7 @@ async function doCloudUpload() {
       let sha = '';
       const getResp = await fetch(url + '?t=' + Date.now(), { 
           headers: { 
-              'Authorization': `Bearer ${config.githubToken}`,
-              'Cache-Control': 'no-cache, no-store, must-revalidate'
+              'Authorization': `Bearer ${config.githubToken}`
           } 
       });
       
