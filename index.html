@@ -1325,10 +1325,15 @@ function enhanceAnalysisText(box, mode, ctx = {}) {
         : clean;
       labelSpan.setAttribute('data-sent', followContext);
       labelSpan.onclick = function() { openFollowUp(this.getAttribute('data-sent'), `${label}${clean}`); };
-      let contentSpan = document.createElement('span');
-      contentSpan.className = 'plain-sent-highlight';
-      contentSpan.textContent = content;
-      box.appendChild(contentSpan);
+      if (mode !== 'writing' && label === '原句：') {
+        let contentSpan = document.createElement('span');
+        contentSpan.className = 'plain-sent-highlight';
+        contentSpan.style.cssText = 'color:#065f46;background:#d1fae5;border-bottom:1px dashed #059669;font-weight:700;padding:0 3px;border-radius:3px;';
+        contentSpan.textContent = content;
+        box.appendChild(contentSpan);
+      } else {
+        box.appendChild(document.createTextNode(content));
+      }
     } else {
       box.appendChild(document.createTextNode(line));
     }
