@@ -215,6 +215,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 /* 句子追问可点击高亮样式 */
 .clickable-sent { color: #3498db; border-bottom: 1px dashed #3498db; cursor: pointer; transition: all .2s; font-weight: bold; }
 .clickable-sent:hover { background: rgba(52,152,219,0.1); color: #2980b9; }
+.plain-sent-highlight { color: #0f766e; background: rgba(20,184,166,0.13); border-bottom: 1px dashed rgba(15,118,110,0.65); font-weight: 700; }
 
 /* AI Loading Animation */
 .ai-think { display: inline-block; color: var(--pl); font-weight: bold; animation: pulse 1.5s infinite; }
@@ -1324,7 +1325,10 @@ function enhanceAnalysisText(box, mode, ctx = {}) {
         : clean;
       labelSpan.setAttribute('data-sent', followContext);
       labelSpan.onclick = function() { openFollowUp(this.getAttribute('data-sent'), `${label}${clean}`); };
-      box.appendChild(document.createTextNode(content));
+      let contentSpan = document.createElement('span');
+      contentSpan.className = 'plain-sent-highlight';
+      contentSpan.textContent = content;
+      box.appendChild(contentSpan);
     } else {
       box.appendChild(document.createTextNode(line));
     }
