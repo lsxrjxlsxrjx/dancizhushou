@@ -54,8 +54,6 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 .wcd{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:8px;box-shadow:var(--shadow);transition:box-shadow .2s;animation:fi .3s ease; content-visibility: auto; contain-intrinsic-size: auto 80px;}
 @keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .wcd:hover{box-shadow:0 4px 20px rgba(0,0,0,.1)}
-body.is-scrolling .wcd, body.is-scrolling .dh, body.is-scrolling .sq-card{box-shadow:none!important;transition:none!important;animation:none!important}
-body.is-scrolling .wcd:hover{box-shadow:none!important}
 .wt{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
 .wn{font-size:1.15rem;font-weight:700;color:var(--primary);flex:1;min-width:0;overflow-wrap:break-word}
 .ws{display:flex;gap:2px;margin-left:10px;flex-shrink:0;align-items:center}
@@ -2555,17 +2553,7 @@ function fmtNow() { const d = new Date(); return `${d.getFullYear()}-${String(d.
 function updateClock() { document.getElementById('currentTime').textContent = fmtNow(); }
 function toast(msg) { document.querySelectorAll('.toast').forEach(t=>t.remove()); const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2500); }
 
-let scrollIdleTimer = null;
-function markScrolling() {
-  document.body.classList.add('is-scrolling');
-  clearTimeout(scrollIdleTimer);
-  scrollIdleTimer = setTimeout(() => document.body.classList.remove('is-scrolling'), 140);
-}
-
 document.querySelectorAll('.mc').forEach(btn => { /* onclick 已写 */ });
-document.addEventListener('scroll', markScrolling, { passive: true, capture: true });
-document.addEventListener('wheel', markScrolling, { passive: true });
-document.addEventListener('touchmove', markScrolling, { passive: true });
 document.addEventListener('keydown',e=>{ 
     if(e.key==='Escape') { 
         if(document.getElementById('testModal').style.display==='flex') confirmExitTest(); 
