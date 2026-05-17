@@ -697,10 +697,6 @@ var collapsedDays = new Set();
 var rangeState = 0;
 var rangeStartId = null;
 var lastClickedId = null; 
-var virtualItems = [];
-var virtualHeights = {};
-var virtualRenderQueued = false;
-var virtualListEl = null;
 
 // ====== 并发控制流ID ======
 var paraExecId = 0;
@@ -1872,185 +1868,99 @@ function renderWords() {
   const ct = document.getElementById('wordCount');
   const failCount = words.filter(w=>w.status==='error').length;
   ct.textContent = `共 ${words.length} 个` + (list.length!==words.length ? `，当前符合条件 ${list.length}` : '') + (failCount ? `，${failCount} 个失败` : '');
-  virtualListEl = document.getElementById('wordList');
-  if (!list.length) {
-    virtualItems = [];
-    virtualListEl.innerHTML=`<div class="es"><div class="icon">📭</div><p>无匹配数据</p></div>`;
-    return;
-  }
-  virtualItems = buildVirtualItems(list);
-  renderVirtualWords(true);
-}
+  const el = document.getElementById('wordList');
+  if (!list.length) { el.innerHTML=`<div class="es"><div class="icon">📭</div><p>无匹配数据</p></div>`; return; }
 
-function buildVirtualItems(list) {
   const showDay = document.getElementById('sortPrimary').value === 'date';
-  if (!showDay) return list.map(w => ({ type: 'word', key: 'w:' + w.id, word: w }));
-
-  const dayMap = new Map();
-  list.forEach(w => {
-    if (!dayMap.has(w.date)) dayMap.set(w.date, []);
-    dayMap.get(w.date).push(w);
-  });
-
-  const items = [];
-  let curDate = '';
-  for (const w of list) {
-    if (w.date !== curDate) {
-      curDate = w.date;
-      items.push({ type: 'day', key: 'd:' + curDate, date: curDate, words: dayMap.get(curDate) || [] });
-    }
-    if (!collapsedDays.has(w.date)) items.push({ type: 'word', key: 'w:' + w.id, word: w });
-  }
-  return items;
-}
-
-function renderVirtualWords(force) {
-  const el = virtualListEl || document.getElementById('wordList');
-  if (!el || !virtualItems.length) return;
-
-  const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-  const listTop = scrollY + el.getBoundingClientRect().top;
-  const viewTop = Math.max(0, scrollY - listTop - 900);
-  const viewBottom = Math.max(viewTop, scrollY + window.innerHeight - listTop + 1100);
-
-  let y = 0, start = 0, end = virtualItems.length - 1;
-  const positions = [];
-  for (let i = 0; i < virtualItems.length; i++) {
-    const h = estimateVirtualHeight(virtualItems[i]);
-    positions.push({ top: y, bottom: y + h });
-    if (positions[i].bottom < viewTop) start = i + 1;
-    if (positions[i].top <= viewBottom) end = i;
-    y += h;
-  }
-
-  start = Math.max(0, Math.min(start, virtualItems.length - 1));
-  end = Math.min(virtualItems.length - 1, Math.max(end + 4, start + 18));
-  const topPad = start > 0 ? positions[start].top : 0;
-  const bottomPad = Math.max(0, y - (positions[end]?.bottom || 0));
-
-  let h = `<div style="height:${Math.round(topPad)}px"></div>`;
-  for (let i = start; i <= end; i++) h += renderVirtualItem(virtualItems[i]);
-  h += `<div style="height:${Math.round(bottomPad)}px"></div>`;
-  el.innerHTML = h;
-
-  requestAnimationFrame(measureVirtualHeights);
-}
-
-function estimateVirtualHeight(item) {
-  const heightKey = virtualHeightKey(item);
-  if (virtualHeights[heightKey]) return virtualHeights[heightKey];
-  if (item.type === 'day') return 58;
-  const w = item.word;
-  if (w.showAnno && w.annotation && !reciteMode) return w.note ? 250 : 220;
-  if (w.status === 'loading' || (w.status === 'error' && !w.annotation)) return 78;
-  return displayMode === 'both' ? 76 : 60;
-}
-
-function virtualHeightKey(item) {
-  if (item.type === 'day') return `${item.key}:${collapsedDays.has(item.date)?'closed':'open'}:${selectMode||reciteMode?'select':'normal'}`;
-  const w = item.word;
-  const annoState = w.showAnno && w.annotation && !reciteMode ? 'open' : 'closed';
-  const noteState = w.note ? 'note' : 'plain';
-  return `${item.key}:${displayMode}:${annoState}:${noteState}:${w.status}:${selectMode||reciteMode?'select':'normal'}`;
-}
-
-function measureVirtualHeights() {
-  document.querySelectorAll('[data-vkey]').forEach(node => {
-    const key = node.getAttribute('data-vkey');
-    const style = getComputedStyle(node);
-    const height = node.getBoundingClientRect().height + parseFloat(style.marginTop || 0) + parseFloat(style.marginBottom || 0);
-    if (key && height > 0) virtualHeights[key] = height;
-  });
-}
-
-function scheduleVirtualWords() {
-  if (!virtualItems.length || virtualRenderQueued) return;
-  virtualRenderQueued = true;
-  requestAnimationFrame(() => {
-    virtualRenderQueued = false;
-    renderVirtualWords(false);
-  });
-}
-
-function renderVirtualItem(item) {
-  return item.type === 'day' ? renderDayHtml(item) : renderWordCardHtml(item.word, virtualHeightKey(item));
-}
-
-function renderDayHtml(item) {
-  const curDate = item.date;
-  const dayWords = item.words;
-  const isCollapsed = collapsedDays.has(curDate);
-  const allSel = dayWords.every(x => selected.has(x.id));
-  let cbHtml = (selectMode || reciteMode) ? `<input type="checkbox" class="date-cb" ${allSel?'checked':''} onclick="toggleDateSelect('${curDate}', event)">` : '';
-  let dtHtml = '';
-  if (isCollapsed) {
-    dtHtml = `<span class="dt">点击展开</span>`;
-  } else if (!reciteMode) {
-    const allAn = dayWords.every(x => x.showAnno);
-    dtHtml = `<span class="dt-btn" onclick="event.stopPropagation(); toggleDayAnno('${curDate}')">📖 ${allAn?'收起注释':'展开注释'}</span>`;
-  }
-  return `<div class="dh" data-vkey="${virtualHeightKey(item)}" onclick="toggleDayCollapse('${curDate}')"><span>${cbHtml}<span class="${isCollapsed?'arrow collapsed':'arrow'}">▼</span>${fmtDate(curDate)}（${dayWords.length}个）</span>${dtHtml}</div>`;
-}
-
-function renderWordCardHtml(w, heightKey) {
+  let h='', curDate='';
   const today = fmtNow().slice(0,10);
-  let badges = '';
-  if (config.showBadgeLevel) {
-    if (w.ebLevel === undefined || w.ebLevel === null || w.ebLevel === -1) badges += `<span class="bdg bdg-l0" style="background:#eee;color:#666">❓无周期</span>`;
-    else if (w.ebLevel >= 7) badges += `<span class="bdg bdg-gr">🎓 掌握</span>`;
-    else if (w.ebLevel === 0) badges += `<span class="bdg bdg-l0">L0 新词</span>`;
-    else badges += `<span class="bdg bdg-lx">L${w.ebLevel}</span>`;
-  }
-  if (config.showBadgeReview && w.ebLevel !== undefined && w.ebLevel < 7 && w.nextReviewDate <= today) badges += `<span class="bdg bdg-td">⏳待背</span>`;
-  if (config.showBadgeTimeLeft && w.ebLevel !== undefined && w.ebLevel < 7 && w.nextReviewDate > today) {
-    const now = new Date();
-    const revDate = new Date(w.nextReviewDate + 'T00:00:00');
-    const diffMs = revDate - now;
-    if (diffMs > 0) {
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      const diffHours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
-      let timeStr = '';
-      if (diffDays > 0) timeStr += diffDays + '天';
-      timeStr += diffHours + '小时';
-      badges += `<span class="bdg" style="background:#e0f7fa;color:#00838f;border:1px solid #b2ebf2">距待背:${timeStr}</span>`;
+
+  for (const w of list) {
+    if (showDay && w.date!==curDate) {
+      curDate=w.date;
+      const dayWords = list.filter(x=>x.date===curDate);
+      const isCollapsed = collapsedDays.has(curDate);
+      const allSel = dayWords.every(x => selected.has(x.id));
+      
+      let cbHtml = (selectMode || reciteMode) ? `<input type="checkbox" class="date-cb" ${allSel?'checked':''} onclick="toggleDateSelect('${curDate}', event)">` : '';
+      let dtHtml = '';
+      if (isCollapsed) { 
+        dtHtml = `<span class="dt">点击展开</span>`; 
+      } else { 
+        if (!reciteMode) {
+          const allAn = dayWords.every(x => x.showAnno); 
+          dtHtml = `<span class="dt-btn" onclick="event.stopPropagation(); toggleDayAnno('${curDate}')">📖 ${allAn?'收起注释':'展开注释'}</span>`; 
+        }
+      }
+
+      h+=`<div class="dh" onclick="toggleDayCollapse('${curDate}')"><span>${cbHtml}<span class="${isCollapsed?'arrow collapsed':'arrow'}">▼</span>${fmtDate(curDate)}（${dayWords.length}个）</span>${dtHtml}</div>`;
     }
+    if (showDay && collapsedDays.has(w.date)) continue;
+    
+    let badges = '';
+    if (config.showBadgeLevel) {
+      if (w.ebLevel === undefined || w.ebLevel === null || w.ebLevel === -1) badges += `<span class="bdg bdg-l0" style="background:#eee;color:#666">❓无周期</span>`;
+      else if (w.ebLevel >= 7) badges += `<span class="bdg bdg-gr">🎓 掌握</span>`;
+      else if (w.ebLevel === 0) badges += `<span class="bdg bdg-l0">L0 新词</span>`;
+      else badges += `<span class="bdg bdg-lx">L${w.ebLevel}</span>`;
+    }
+    if (config.showBadgeReview && w.ebLevel !== undefined && w.ebLevel < 7 && w.nextReviewDate <= today) badges += `<span class="bdg bdg-td">⏳待背</span>`;
+    
+    // 距离待背时间显示
+    if (config.showBadgeTimeLeft && w.ebLevel !== undefined && w.ebLevel < 7 && w.nextReviewDate > today) {
+        const now = new Date();
+        const revDate = new Date(w.nextReviewDate + 'T00:00:00');
+        const diffMs = revDate - now;
+        if (diffMs > 0) {
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            const diffHours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+            let timeStr = '';
+            if (diffDays > 0) timeStr += diffDays + '天';
+            timeStr += diffHours + '小时';
+            badges += `<span class="bdg" style="background:#e0f7fa;color:#00838f;border:1px solid #b2ebf2">距待背:${timeStr}</span>`;
+        }
+    }
+
+    if (config.showBadgeWrong && w.wrongCount > 0) badges += `<span class="bdg bdg-wr">🩸错(${w.wrongCount})</span>`;
+    if (config.showBadgeNote && w.note) badges += `<span class="bdg" style="background:#fff9c4;color:#f57f17;border:1px solid #ffe082">📝笔记</span>`;
+
+    const stars = config.showBadgeStar ? [1,2,3,4,5].map(i=>`<span class="st ${i<=w.stars?'f':''}" onclick="setStar('${w.id}',${i},event)">★</span>`).join('') : '';
+    const errTag = (w.status==='error') ? '<span style="font-size:calc(.7rem * var(--us));color:#fff;background:var(--red);padding:calc(1px * var(--us)) calc(6px * var(--us));border-radius:4px;margin-left:8px;vertical-align:middle">调用失败</span>' : '';
+    const meaning = w.annotation?.meaning || '';
+    let displayText = displayMode === 'word' ? esc(w.word) : displayMode === 'meaning' ? (meaning?esc(meaning):'<i style="color:var(--muted)">暂无释义</i>') : `${esc(w.word)} <span style="color:var(--muted);font-size:.85em;margin-left:10px">${esc(meaning)}</span>`;
+    
+    const isSel = selected.has(w.id); 
+    const isSelMode = selectMode || reciteMode;
+
+    h+=`<div class="wcd ${isSel&&isSelMode?'selected':''}" data-id="${w.id}">
+      <div class="wt" onclick="handleWordClick('${w.id}', event)">`;
+    if (isSelMode) h+=`<input type="checkbox" class="sel-cb" ${isSel?'checked':''} onclick="event.stopPropagation();handleWordClick('${w.id}', event)">`;
+    h+=`<span class="wn">${displayText}${errTag}</span>
+        <span class="ws" onclick="event.stopPropagation()">${badges} <span style="margin-left:6px">${stars}</span></span>
+        <span class="wa" onclick="event.stopPropagation()"><button title="朗读" onclick="playWord('${w.id}')">🔊</button><button title="编辑属性" onclick="openEdit('${w.id}')">✏️</button><button title="删除" onclick="delWord('${w.id}')">🗑️</button></span>
+      </div>`;
+
+    if (w.status==='loading') h+=`<div class="wld">⏳ 后台AI处理中...</div>`;
+    else if (w.status==='error'&&!w.annotation) h+=`<div class="wle">❌ 失败 <button onclick="regenerate('${w.id}')" style="font-size:calc(.8rem * var(--us));cursor:pointer;margin-left:6px;border:1px solid #ccc;border-radius:4px;padding:calc(2px * var(--us)) calc(8px * var(--us));background:#fff">重排队</button></div>`;
+
+    if (w.annotation && !reciteMode) { 
+      const a=w.annotation;
+      let noteHtml = w.note ? `<div class="ar" style="margin-top:8px;padding:8px;background:#fffde7;border-left:3px solid #fbc02d;border-radius:4px"><span class="al" style="color:#f57f17">笔记</span><span class="av" style="white-space:pre-wrap">${esc(w.note)}</span></div>` : '';
+      
+      h+=`<div class="an ${w.showAnno?'show':''}" id="an-${w.id}">
+        <div class="ar"><span class="ap">${esc(a.phonetic)}</span><span class="ao">${esc(a.pos)}</span><span style="margin-left:auto;display:flex;gap:4px"><button onclick="speak('${w.id}',1)" style="font-size:calc(.7rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🇬🇧</button><button onclick="speak('${w.id}',2)" style="font-size:calc(.7rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🇺🇸</button></span></div>
+        <div class="ar"><span class="al">释义</span><span class="av">${esc(a.meaning)}</span></div>
+        <div class="ar"><span class="al">短语</span><span class="av">${esc(a.phrases)}</span></div>
+        <div class="ar"><span class="al">变形</span><span class="av">${esc(a.inflections)}</span></div>
+        <div class="as"><div class="ar"><span class="al">例句</span><span class="av">${esc(a.examples).replace(/\n/g,'<br>')}</span></div></div>
+        <div class="as"><div class="ar"><span class="al">助记</span><span class="av">${esc(a.mnemonics)}</span></div></div>
+        ${noteHtml}
+        <div class="aa"><button onclick="regenerate('${w.id}')">🔄 重新生成</button><button onclick="openEdit('${w.id}')">✏️ 笔记与属性</button></div>
+      </div>`;
+    }
+    h+=`</div>`;
   }
-  if (config.showBadgeWrong && w.wrongCount > 0) badges += `<span class="bdg bdg-wr">🩸错(${w.wrongCount})</span>`;
-  if (config.showBadgeNote && w.note) badges += `<span class="bdg" style="background:#fff9c4;color:#f57f17;border:1px solid #ffe082">📝笔记</span>`;
-
-  const stars = config.showBadgeStar ? [1,2,3,4,5].map(i=>`<span class="st ${i<=w.stars?'f':''}" onclick="setStar('${w.id}',${i},event)">★</span>`).join('') : '';
-  const errTag = (w.status==='error') ? '<span style="font-size:calc(.7rem * var(--us));color:#fff;background:var(--red);padding:calc(1px * var(--us)) calc(6px * var(--us));border-radius:4px;margin-left:8px;vertical-align:middle">调用失败</span>' : '';
-  const meaning = w.annotation?.meaning || '';
-  let displayText = displayMode === 'word' ? esc(w.word) : displayMode === 'meaning' ? (meaning?esc(meaning):'<i style="color:var(--muted)">暂无释义</i>') : `${esc(w.word)} <span style="color:var(--muted);font-size:.85em;margin-left:10px">${esc(meaning)}</span>`;
-  const isSel = selected.has(w.id);
-  const isSelMode = selectMode || reciteMode;
-
-  let h = `<div class="wcd ${isSel&&isSelMode?'selected':''}" data-id="${w.id}" data-vkey="${heightKey}">
-    <div class="wt" onclick="handleWordClick('${w.id}', event)">`;
-  if (isSelMode) h += `<input type="checkbox" class="sel-cb" ${isSel?'checked':''} onclick="event.stopPropagation();handleWordClick('${w.id}', event)">`;
-  h += `<span class="wn">${displayText}${errTag}</span>
-      <span class="ws" onclick="event.stopPropagation()">${badges} <span style="margin-left:6px">${stars}</span></span>
-      <span class="wa" onclick="event.stopPropagation()"><button title="朗读" onclick="playWord('${w.id}')">🔊</button><button title="编辑属性" onclick="openEdit('${w.id}')">✏️</button><button title="删除" onclick="delWord('${w.id}')">🗑️</button></span>
-    </div>`;
-
-  if (w.status==='loading') h += `<div class="wld">⏳ 后台AI处理中...</div>`;
-  else if (w.status==='error'&&!w.annotation) h += `<div class="wle">❌ 失败 <button onclick="regenerate('${w.id}')" style="font-size:calc(.8rem * var(--us));cursor:pointer;margin-left:6px;border:1px solid #ccc;border-radius:4px;padding:calc(2px * var(--us)) calc(8px * var(--us));background:#fff">重排队</button></div>`;
-
-  if (w.annotation && !reciteMode) {
-    const a=w.annotation;
-    let noteHtml = w.note ? `<div class="ar" style="margin-top:8px;padding:8px;background:#fffde7;border-left:3px solid #fbc02d;border-radius:4px"><span class="al" style="color:#f57f17">笔记</span><span class="av" style="white-space:pre-wrap">${esc(w.note)}</span></div>` : '';
-    h += `<div class="an ${w.showAnno?'show':''}" id="an-${w.id}">
-      <div class="ar"><span class="ap">${esc(a.phonetic)}</span><span class="ao">${esc(a.pos)}</span><span style="margin-left:auto;display:flex;gap:4px"><button onclick="speak('${w.id}',1)" style="font-size:calc(.7rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🇬🇧</button><button onclick="speak('${w.id}',2)" style="font-size:calc(.7rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🇺🇸</button></span></div>
-      <div class="ar"><span class="al">释义</span><span class="av">${esc(a.meaning)}</span></div>
-      <div class="ar"><span class="al">短语</span><span class="av">${esc(a.phrases)}</span></div>
-      <div class="ar"><span class="al">变形</span><span class="av">${esc(a.inflections)}</span></div>
-      <div class="as"><div class="ar"><span class="al">例句</span><span class="av">${esc(a.examples).replace(/\n/g,'<br>')}</span></div></div>
-      <div class="as"><div class="ar"><span class="al">助记</span><span class="av">${esc(a.mnemonics)}</span></div></div>
-      ${noteHtml}
-      <div class="aa"><button onclick="regenerate('${w.id}')">🔄 重新生成</button><button onclick="openEdit('${w.id}')">✏️ 笔记与属性</button></div>
-    </div>`;
-  }
-  return h + `</div>`;
+  el.innerHTML = h;
 }
 function fmtDate(ds) { const d=new Date(ds+'T00:00:00'), t=new Date(), ts=t.toISOString().slice(0,10); const y=new Date(t); y.setDate(y.getDate()-1); if(ds===ts) return '📅 今天 ('+ds+')'; if(ds===y.toISOString().slice(0,10)) return '📅 昨天 ('+ds+')'; return `📅 ${Math.floor((t-d)/864e5)}天前 (${ds})`; }
 
@@ -2149,7 +2059,6 @@ function toggleAnno(id) {
     e.showAnno = !e.showAnno; 
     const el = document.getElementById('an-' + id); 
     if(el) { if(e.showAnno) el.classList.add('show'); else el.classList.remove('show'); } 
-    setTimeout(scheduleVirtualWords, 40);
 }
 
 function toggleDayCollapse(date) { if (collapsedDays.has(date)) collapsedDays.delete(date); else collapsedDays.add(date); renderWords(); }
@@ -2169,7 +2078,6 @@ function toggleAll() {
     document.querySelectorAll('.dt-btn').forEach(btn => {
         btn.innerHTML = allShown ? '📖 收起注释' : '📖 展开注释';
     });
-    setTimeout(() => renderVirtualWords(true), 40);
 }
 
 function cycleDisplayMode() { const m = ['word', 'meaning', 'both']; displayMode = m[(m.indexOf(displayMode) + 1) % m.length]; document.getElementById('displayModeBtn').textContent = {word:'显示：英文',meaning:'显示：释义',both:'显示：英+中'}[displayMode]; renderWords(); }
@@ -2591,8 +2499,6 @@ document.addEventListener('keydown',e=>{
     } 
 });
 document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.key==='s') { e.preventDefault(); saveFile(); } });
-window.addEventListener('scroll', scheduleVirtualWords, { passive: true });
-window.addEventListener('resize', scheduleVirtualWords, { passive: true });
 
 loadEmbedded(); loadLocalCache(); document.getElementById('lastSaveTime').textContent = lastSaveTime || '未保存';
 
