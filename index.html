@@ -50,7 +50,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 .dh .arrow{font-size:calc(.7rem * var(--us));margin-right:6px;display:inline-block;transition:transform .2s}
 .dh .arrow.collapsed{transform:rotate(-90deg)}
 
-.wcd{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:8px;box-shadow:var(--shadow);transition:box-shadow .2s}
+.wcd{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:8px;box-shadow:var(--shadow);transition:box-shadow .2s;animation:fi .3s ease}
 @keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .wcd:hover{box-shadow:0 4px 20px rgba(0,0,0,.1)}
 .wt{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
@@ -701,9 +701,6 @@ var virtualItems = [];
 var virtualHeights = {};
 var virtualRenderQueued = false;
 var virtualListEl = null;
-var virtualRenderedStart = -1;
-var virtualRenderedEnd = -1;
-var virtualRenderedSignature = '';
 
 // ====== 并发控制流ID ======
 var paraExecId = 0;
@@ -1878,16 +1875,10 @@ function renderWords() {
   virtualListEl = document.getElementById('wordList');
   if (!list.length) {
     virtualItems = [];
-    virtualRenderedStart = -1;
-    virtualRenderedEnd = -1;
-    virtualRenderedSignature = '';
     virtualListEl.innerHTML=`<div class="es"><div class="icon">📭</div><p>无匹配数据</p></div>`;
     return;
   }
   virtualItems = buildVirtualItems(list);
-  virtualRenderedStart = -1;
-  virtualRenderedEnd = -1;
-  virtualRenderedSignature = '';
   renderVirtualWords(true);
 }
 
@@ -1919,45 +1910,28 @@ function renderVirtualWords(force) {
 
   const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
   const listTop = scrollY + el.getBoundingClientRect().top;
-  const visibleTop = Math.max(0, scrollY - listTop);
-  const visibleBottom = visibleTop + window.innerHeight;
+  const viewTop = Math.max(0, scrollY - listTop - 900);
+  const viewBottom = Math.max(viewTop, scrollY + window.innerHeight - listTop + 1100);
 
   let y = 0, start = 0, end = virtualItems.length - 1;
   const positions = [];
   for (let i = 0; i < virtualItems.length; i++) {
     const h = estimateVirtualHeight(virtualItems[i]);
     positions.push({ top: y, bottom: y + h });
+    if (positions[i].bottom < viewTop) start = i + 1;
+    if (positions[i].top <= viewBottom) end = i;
     y += h;
   }
 
-  if (!force && virtualRenderedStart >= 0 && virtualRenderedEnd >= 0) {
-    const renderedTop = positions[virtualRenderedStart]?.top || 0;
-    const renderedBottom = positions[virtualRenderedEnd]?.bottom || 0;
-    if (visibleTop >= renderedTop + 240 && visibleBottom <= renderedBottom - 240) return;
-  }
-
-  const viewTop = Math.max(0, visibleTop - 4200);
-  const viewBottom = visibleBottom + 5200;
-  for (let i = 0; i < virtualItems.length; i++) {
-    if (positions[i].bottom < viewTop) start = i + 1;
-    if (positions[i].top <= viewBottom) end = i;
-  }
-
   start = Math.max(0, Math.min(start, virtualItems.length - 1));
-  end = Math.min(virtualItems.length - 1, Math.max(end + 12, start + 48));
+  end = Math.min(virtualItems.length - 1, Math.max(end + 4, start + 18));
   const topPad = start > 0 ? positions[start].top : 0;
   const bottomPad = Math.max(0, y - (positions[end]?.bottom || 0));
-  const signature = `${virtualItems.length}:${start}:${end}`;
-
-  if (!force && start === virtualRenderedStart && end === virtualRenderedEnd && signature === virtualRenderedSignature) return;
 
   let h = `<div style="height:${Math.round(topPad)}px"></div>`;
   for (let i = start; i <= end; i++) h += renderVirtualItem(virtualItems[i]);
   h += `<div style="height:${Math.round(bottomPad)}px"></div>`;
   el.innerHTML = h;
-  virtualRenderedStart = start;
-  virtualRenderedEnd = end;
-  virtualRenderedSignature = signature;
 
   requestAnimationFrame(measureVirtualHeights);
 }
