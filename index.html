@@ -1688,45 +1688,74 @@ document.addEventListener('touchend', function() { isDraggingWp = false; });
 // 全局精准划选监听 (处理手动模式)
 document.addEventListener('mouseup', handleGlobalSelection);
 document.addEventListener('touchend', handleGlobalSelection, {passive: true});
+document.addEventListener('selectionchange', handleSelectionChange);
+
+var selectionPopupTimer = null;
+var lastSelectionPoint = null;
 
 function handleGlobalSelection(e) {
     if (isDraggingWp) return;
     if (wp.contains(e.target)) return; 
-    
-    setTimeout(() => {
-        const sel = window.getSelection().toString().trim();
-        // 如果有选中文本（允许较长的短语，但限制在100字符内防误操作）
-        if (sel && sel.length > 0 && sel.length < 100) {
-            const selNode = window.getSelection().anchorNode;
-            const paraBox = document.getElementById('paraStreamBox');
-            const writingBox = document.getElementById('writingStreamBox');
-            if (selNode && ((paraBox && paraBox.contains(selNode)) || (writingBox && writingBox.contains(selNode)))) {
-                if (Date.now() - lastWordPopupTime < 500) return; // 防抖，拦截幽灵重发
-                lastWordPopupTime = Date.now();
 
-                let touch = e.changedTouches ? e.changedTouches[0] : e;
-                // 注意：由于弹窗是 absolute 定位，这里的起点也需使用文档坐标 pageX/pageY
-                let px = touch.pageX || (touch.clientX + window.scrollX), 
-                    py = touch.pageY || (touch.clientY + window.scrollY);
-                try {
-                    // 尝试获取选区底部的精确坐标，以防弹窗遮挡原生菜单
-                    const rect = window.getSelection().getRangeAt(0).getBoundingClientRect();
-                    px = rect.left + rect.width / 2 + window.scrollX;
-                    py = rect.bottom + window.scrollY;
-                } catch(err) {}
-                window.getSelection().removeAllRanges(); // 消除底色残影
-                showWordPopup(sel, px, py + 15, false); // false 代表手动模式
-            }
-        }
-    }, 100);
+    const touch = e.changedTouches ? e.changedTouches[0] : e;
+    lastSelectionPoint = {
+        x: touch.pageX || (touch.clientX + window.scrollX),
+        y: touch.pageY || (touch.clientY + window.scrollY)
+    };
+    scheduleSelectionPopup(e.changedTouches ? 520 : 120);
+}
+
+function handleSelectionChange() {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+    scheduleSelectionPopup(420);
+}
+
+function scheduleSelectionPopup(delay) {
+    clearTimeout(selectionPopupTimer);
+    selectionPopupTimer = setTimeout(showSelectionPopupFromCurrentRange, delay);
+}
+
+function getAnalysisSelection() {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return null;
+    const text = selection.toString().trim();
+    if (!text || text.length >= 100) return null;
+    const node = selection.anchorNode || selection.focusNode;
+    const paraBox = document.getElementById('paraStreamBox');
+    const writingBox = document.getElementById('writingStreamBox');
+    if (!node || !((paraBox && paraBox.contains(node)) || (writingBox && writingBox.contains(node)))) return null;
+    return { selection, text, range: selection.getRangeAt(0) };
+}
+
+function getSelectionPopupPoint(range) {
+    try {
+        const rects = Array.from(range.getClientRects()).filter(r => r.width || r.height);
+        const rect = rects[rects.length - 1] || range.getBoundingClientRect();
+        if (rect) return { x: rect.left + rect.width / 2 + window.scrollX, y: rect.bottom + window.scrollY };
+    } catch(e) {}
+    return lastSelectionPoint || { x: window.scrollX + 40, y: window.scrollY + 80 };
+}
+
+function showSelectionPopupFromCurrentRange() {
+    if (isDraggingWp) return;
+    const info = getAnalysisSelection();
+    if (!info) return;
+    if (Date.now() - lastWordPopupTime < 500) return;
+    lastWordPopupTime = Date.now();
+    const point = getSelectionPopupPoint(info.range);
+    info.selection.removeAllRanges();
+    showWordPopup(info.text, point.x, point.y + 15, false);
 }
 
 // 智能单点取词逻辑 (处理自动模式)
 var ptrStartX = 0, ptrStartY = 0;
 var ptrIsDown = false;
+var ptrStartTime = 0;
 
 function onPtrDown(e) {
     ptrIsDown = true;
+    ptrStartTime = Date.now();
     const touch = e.touches ? e.touches[0] : e;
     ptrStartX = touch.clientX;
     ptrStartY = touch.clientY;
@@ -1742,9 +1771,10 @@ function onPtrUp(e) {
     setTimeout(() => {
         const sel = window.getSelection().toString().trim();
         const dist = Math.sqrt(Math.pow(endX - ptrStartX, 2) + Math.pow(endY - ptrStartY, 2));
+        const pressTime = Date.now() - ptrStartTime;
 
         // 如果距离很小，且没有任何文字被划选，则视为普通的点击，启动智能边界寻找
-        if (dist <= 10 && (!sel || sel.length === 0)) {
+        if (pressTime < 450 && dist <= 10 && (!sel || sel.length === 0)) {
             // 注意：API 寻找坐标依然用 clientX/clientY，但最终弹窗位置需转换为文档坐标
             extractWordAtPoint(endX, endY, touch.pageX, touch.pageY);
         }
