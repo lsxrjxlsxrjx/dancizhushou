@@ -226,7 +226,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 @keyframes dots { 0%, 20% { content: ''; } 40% { content: '.'; } 60% { content: '..'; } 80%, 100% { content: '...'; } }
 
 /* Word Popup */
-.word-popup { position: absolute; z-index: 1000; background: var(--card); border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-radius: 10px; width: 360px; min-width:320px; min-height:160px; max-width: min(560px, calc(100vw - 20px)); display: none; flex-direction: column; animation: fi .2s ease; overflow: auto; resize: both; }
+.word-popup { position: absolute; z-index: 1000; background: var(--card); border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-radius: 10px; width: 340px; min-width:300px; min-height:160px; max-width: min(560px, calc(100vw - 20px)); display: none; flex-direction: column; animation: fi .2s ease; overflow: auto; resize: both; }
 .wp-header { background: var(--primary); color: #fff; padding: 8px 12px; font-weight: bold; font-size: 1rem; display: flex; justify-content: space-between; align-items: flex-start; cursor: grab; user-select: none; }
 .wp-header:active { cursor: grabbing; }
 #wpWord { max-height: 80px; overflow-y: auto; display: inline-block; word-break: break-all; margin-right: 10px; flex: 1; }
@@ -1728,7 +1728,7 @@ function handleGlobalSelection(e) {
         if (e.touches && e.touches.length > 0) return;
         isTouchSelectingText = false;
         lastSelectionTouchEnd = Date.now();
-        scheduleSelectionPopup(650);
+        scheduleSelectionPopup(900);
         return;
     }
     scheduleSelectionPopup(120);
@@ -1738,7 +1738,7 @@ function handleSelectionChange() {
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed) return;
     if (isTouchSelectingText) return;
-    scheduleSelectionPopup(Date.now() - lastSelectionTouchEnd < 900 ? 650 : 420);
+    scheduleSelectionPopup(Date.now() - lastSelectionTouchEnd < 1200 ? 900 : 420);
 }
 
 function scheduleSelectionPopup(delay) {
