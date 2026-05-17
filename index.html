@@ -258,6 +258,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
     <button class="lib-mini" onclick="addLibrary()" title="新增词库">＋</button>
     <button class="lib-mini" onclick="renameLibrary()" title="重命名词库">✎</button>
     <button class="lib-mini" onclick="deleteLibrary()" title="删除当前词库">🗑</button>
+    <button class="lib-mini" onclick="batchRegenerateLibrary()" title="批量重新生成当前词库">🔄</button>
     <button onclick="openImport()">＋ 查询/导入</button>
     <button class="sv" onclick="openCloudSync()">☁️ 云同步</button>
     <button class="rm" id="btnReciteMode" onclick="toggleReciteMode()">🧠 背单词</button>
@@ -2048,6 +2049,39 @@ function regenerate(id) {
   e.status='loading'; renderWords(); log(`排队重试: ${e.word}`);
   TaskManager.add([{ id: gid(), word: e.word, type: 'retry', entry: e, fn: async () => { try { e.annotation = await callAI(e.word); e.status='loaded'; log(`✅ 重试成功: ${e.word}`); } catch(err) { e.status='error'; log(`❌ 重试失败 [${e.word}]: ${err.message}`); } markDirty(); renderWords(); } }]);
   toast(`已加入重试队列`);
+}
+
+function batchRegenerateLibrary() {
+  syncCurrentLibraryWords();
+  const lib = getCurrentLibrary();
+  const list = lib.words.filter(w => w && w.word);
+  if (!list.length) { toast('当前词库没有可重新生成的词条'); return; }
+  if (!confirm(`确定批量重新生成「${lib.name}」中的 ${list.length} 个词条释义吗？\n\n会重新调用导入 API，保留日期、星级、笔记、错题和复习进度。`)) return;
+  list.forEach(e => e.status = 'loading');
+  words = lib.words;
+  markDirty();
+  renderWords();
+  log(`批量重新生成「${lib.name}」${list.length} 个词条`);
+  const tasks = list.map(e => ({
+    id: gid(),
+    word: e.word,
+    type: 'retry',
+    entry: e,
+    fn: async () => {
+      try {
+        e.annotation = await callAI(e.word);
+        e.status = 'loaded';
+        log(`✅ 重新生成成功: ${e.word}`);
+      } catch(err) {
+        e.status = 'error';
+        log(`❌ 重新生成失败 [${e.word}]: ${err.message}`);
+      }
+      markDirty();
+      if (lib.id === currentLibraryId) renderWords();
+    }
+  }));
+  TaskManager.add(tasks);
+  toast(`已排队重新生成 ${list.length} 个词条`);
 }
 
 function retryAllFailed() {
