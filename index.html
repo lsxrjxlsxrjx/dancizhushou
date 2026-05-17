@@ -226,7 +226,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 @keyframes dots { 0%, 20% { content: ''; } 40% { content: '.'; } 60% { content: '..'; } 80%, 100% { content: '...'; } }
 
 /* Word Popup */
-.word-popup { position: absolute; z-index: 1000; background: var(--card); border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-radius: 10px; width: 320px; min-width:300px; min-height:160px; max-width: min(560px, calc(100vw - 20px)); display: none; flex-direction: column; animation: fi .2s ease; overflow: auto; resize: both; }
+.word-popup { position: absolute; z-index: 1000; background: var(--card); border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-radius: 10px; width: 360px; min-width:320px; min-height:160px; max-width: min(560px, calc(100vw - 20px)); display: none; flex-direction: column; animation: fi .2s ease; overflow: auto; resize: both; }
 .wp-header { background: var(--primary); color: #fff; padding: 8px 12px; font-weight: bold; font-size: 1rem; display: flex; justify-content: space-between; align-items: flex-start; cursor: grab; user-select: none; }
 .wp-header:active { cursor: grabbing; }
 #wpWord { max-height: 80px; overflow-y: auto; display: inline-block; word-break: break-all; margin-right: 10px; flex: 1; }
@@ -238,8 +238,8 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 .wp-note:focus { border-color: var(--accent); }
 .wp-note-hint { font-size: .72rem; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
 .wp-note-actions { display:flex; gap:8px; justify-content:flex-end; }
-.wp-footer { padding: 8px 12px; background: #f8f9fa; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; flex-wrap:wrap; }
-.wp-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; font-size: 0.8rem; transition: background .2s; }
+.wp-footer { padding: 8px 10px; background: #f8f9fa; border-top: 1px solid var(--border); display: flex; gap: 6px; justify-content: flex-end; flex-wrap: nowrap; }
+.wp-btn { padding: 4px 9px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; font-size: 0.8rem; transition: background .2s; white-space: nowrap; }
 .wp-btn:hover { background: var(--border); }
 .wp-btn.import { background: var(--pl); color: #fff; border: none; }
 .wp-btn.import:hover { background: var(--primary); }
@@ -1688,10 +1688,32 @@ document.addEventListener('touchend', function() { isDraggingWp = false; });
 // 全局精准划选监听 (处理手动模式)
 document.addEventListener('mouseup', handleGlobalSelection);
 document.addEventListener('touchend', handleGlobalSelection, {passive: true});
+document.addEventListener('touchstart', handleSelectionTouchStart, {passive: true});
+document.addEventListener('touchcancel', handleSelectionTouchCancel, {passive: true});
 document.addEventListener('selectionchange', handleSelectionChange);
 
 var selectionPopupTimer = null;
 var lastSelectionPoint = null;
+var isTouchSelectingText = false;
+var lastSelectionTouchEnd = 0;
+
+function isAnalysisTarget(node) {
+    const paraBox = document.getElementById('paraStreamBox');
+    const writingBox = document.getElementById('writingStreamBox');
+    return !!(node && ((paraBox && paraBox.contains(node)) || (writingBox && writingBox.contains(node))));
+}
+
+function handleSelectionTouchStart(e) {
+    if (wp.contains(e.target)) return;
+    if (!isAnalysisTarget(e.target)) return;
+    isTouchSelectingText = true;
+    clearTimeout(selectionPopupTimer);
+}
+
+function handleSelectionTouchCancel() {
+    isTouchSelectingText = false;
+    clearTimeout(selectionPopupTimer);
+}
 
 function handleGlobalSelection(e) {
     if (isDraggingWp) return;
@@ -1702,13 +1724,21 @@ function handleGlobalSelection(e) {
         x: touch.pageX || (touch.clientX + window.scrollX),
         y: touch.pageY || (touch.clientY + window.scrollY)
     };
-    scheduleSelectionPopup(e.changedTouches ? 520 : 120);
+    if (e.changedTouches) {
+        if (e.touches && e.touches.length > 0) return;
+        isTouchSelectingText = false;
+        lastSelectionTouchEnd = Date.now();
+        scheduleSelectionPopup(650);
+        return;
+    }
+    scheduleSelectionPopup(120);
 }
 
 function handleSelectionChange() {
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed) return;
-    scheduleSelectionPopup(420);
+    if (isTouchSelectingText) return;
+    scheduleSelectionPopup(Date.now() - lastSelectionTouchEnd < 900 ? 650 : 420);
 }
 
 function scheduleSelectionPopup(delay) {
@@ -1722,9 +1752,7 @@ function getAnalysisSelection() {
     const text = selection.toString().trim();
     if (!text || text.length >= 100) return null;
     const node = selection.anchorNode || selection.focusNode;
-    const paraBox = document.getElementById('paraStreamBox');
-    const writingBox = document.getElementById('writingStreamBox');
-    if (!node || !((paraBox && paraBox.contains(node)) || (writingBox && writingBox.contains(node)))) return null;
+    if (!isAnalysisTarget(node)) return null;
     return { selection, text, range: selection.getRangeAt(0) };
 }
 
