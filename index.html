@@ -54,6 +54,8 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 .wcd{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:8px;box-shadow:var(--shadow);transition:box-shadow .2s;animation:fi .3s ease; content-visibility: auto; contain-intrinsic-size: auto 80px;}
 @keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .wcd:hover{box-shadow:0 4px 20px rgba(0,0,0,.1)}
+body.is-scrolling .wcd, body.is-scrolling .dh, body.is-scrolling .sq-card{box-shadow:none!important;transition:none!important;animation:none!important}
+body.is-scrolling .wcd:hover{box-shadow:none!important}
 .wt{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
 .wn{font-size:1.15rem;font-weight:700;color:var(--primary);flex:1;min-width:0;overflow-wrap:break-word}
 .ws{display:flex;gap:2px;margin-left:10px;flex-shrink:0;align-items:center}
@@ -263,7 +265,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
   
   <button class="tbb" id="btnFilter" onclick="openFilterModal()">🎯 筛选 <span id="filterBadge" style="display:none;background:var(--accent);color:#fff;border-radius:10px;padding:2px 6px;font-size:.65rem;margin-left:4px">ON</span></button>
 
-  <input type="text" class="sb" id="searchBox" placeholder="搜索..." oninput="renderWords()" style="margin-left:auto;">
+  <input type="text" class="sb" id="searchBox" placeholder="搜索..." oninput="scheduleRenderWords(180)" style="margin-left:auto;">
   <button class="tbb" id="toggleAllBtn" onclick="toggleAll()">全部显示</button>
   <button class="tbb" id="displayModeBtn" onclick="cycleDisplayMode()">显示：英文</button>
   <button class="tbb" id="selectModeBtn" onclick="toggleSelectMode()">☑ 选择</button>
@@ -707,6 +709,8 @@ var currentWordPopupId = 0;
 var lastWordPopupTime = 0; // 防抖时间锁
 var LOCAL_CACHE_KEY = 'vocab_local_cache_v1';
 var currentFuSent = '';
+var cacheSaveTimer = null;
+var renderWordsTimer = null;
 
 // 统一过滤状态
 var fState = { today: false, wrong: false, none: false, stMin: 0, stMax: 5, ebMin: 0, ebMax: 7 };
@@ -791,6 +795,22 @@ function saveLocalCache() {
   } catch(e) {
     console.warn('[Vocab] 本地缓存写入失败:', e);
   }
+}
+
+function scheduleLocalCacheSave(delay = 600) {
+  clearTimeout(cacheSaveTimer);
+  cacheSaveTimer = setTimeout(() => {
+    cacheSaveTimer = null;
+    saveLocalCache();
+  }, delay);
+}
+
+function flushLocalCache() {
+  if (cacheSaveTimer) {
+    clearTimeout(cacheSaveTimer);
+    cacheSaveTimer = null;
+  }
+  saveLocalCache();
 }
 
 function loadLocalCache() {
@@ -973,9 +993,9 @@ async function saveFile() {
   }
 }
 function dlFile(content, name) { const blob = new Blob([content], { type: 'text/html;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url); markClean(); toast('✅ 已下载'); log(`下载: ${name}`); }
-function markDirty() { dirty = true; saveLocalCache(); document.getElementById('dirtyDot').classList.add('on'); }
-function markClean() { dirty = false; saveLocalCache(); document.getElementById('dirtyDot').classList.remove('on'); document.getElementById('lastSaveTime').textContent = lastSaveTime; }
-window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+function markDirty() { dirty = true; scheduleLocalCacheSave(); document.getElementById('dirtyDot').classList.add('on'); }
+function markClean() { dirty = false; flushLocalCache(); document.getElementById('dirtyDot').classList.remove('on'); document.getElementById('lastSaveTime').textContent = lastSaveTime; }
+window.addEventListener('beforeunload', e => { if (dirty) { flushLocalCache(); e.preventDefault(); e.returnValue = ''; } });
 
 function openCloudSync() { document.getElementById('cloudSyncModal').classList.add('show'); }
 
@@ -1245,6 +1265,32 @@ function renderStreamCard(word, annotation) {
   return `<div class="sq-card" data-word="${e(word)}"><div class="sq-word">${e(word)} <button onclick="speakDirect('${j}',2)" style="font-size:calc(.75rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🔊</button></div><div class="sq-row"><span class="sq-phonetic">${e(annotation.phonetic)}</span><span class="sq-pos">${e(annotation.pos)}</span></div><div class="sq-row"><span class="sq-label">释义</span><span class="sq-val">${e(annotation.meaning)}</span></div><div class="sq-row"><span class="sq-label">短语</span><span class="sq-val">${e(annotation.phrases)}</span></div><div class="sq-row"><span class="sq-label">变形</span><span class="sq-val">${e(annotation.inflections)}</span></div><div class="sq-section"><div class="sq-row"><span class="sq-label">例句</span><span class="sq-val">${e(annotation.examples).replace(/\n/g,'<br>')}</span></div></div><div class="sq-section"><div class="sq-row"><span class="sq-label">助记</span><span class="sq-val">${e(annotation.mnemonics)}</span></div></div></div>`;
 }
 
+function makeStreamTextUpdater(el, box) {
+  let text = '', pending = '', timer = null;
+  const flush = () => {
+    timer = null;
+    if (!pending) return;
+    text += pending;
+    pending = '';
+    el.textContent = text;
+    const cursor = document.createElement('span');
+    cursor.className = 'sq-cursor';
+    el.appendChild(cursor);
+    box.scrollTop = box.scrollHeight;
+  };
+  return {
+    push(chunk) {
+      pending += chunk;
+      if (!timer) timer = setTimeout(flush, 80);
+    },
+    done() {
+      if (timer) { clearTimeout(timer); timer = null; }
+      flush();
+      return text + pending;
+    }
+  };
+}
+
 function doQuery() {
   const items = getInputWords(); if (!items.length) return;
   const area = document.getElementById('streamArea'); const box = document.getElementById('streamBox'); area.style.display = 'block';
@@ -1255,7 +1301,9 @@ function doQuery() {
     return { id: gid(), word, type: 'query', card, fn: async () => {
         log(`开始流式查询: ${word}`);
         streamedWords.add(word.toLowerCase()); const liveEl = card.querySelector('.sq-live'); liveEl.textContent = ''; let fullText = '';
-        try { await callAIStream(word, (chunk) => { fullText += chunk; liveEl.innerHTML = esc(fullText) + '<span class="sq-cursor"></span>'; box.scrollTop = box.scrollHeight; });
+        const updateLive = makeStreamTextUpdater(liveEl, box);
+        try { await callAIStream(word, (chunk) => { updateLive.push(chunk); });
+          fullText = updateLive.done();
           let cleaned = fullText.trim().replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
           try { const p = JSON.parse(cleaned); const anno = { phonetic:p.phonetic||'', pos:p.pos||'', meaning:p.meaning||'', phrases:p.phrases||'无', inflections:p.inflections||'无', examples:p.examples||'', mnemonics:p.mnemonics||'' }; card.className = ''; card.innerHTML = renderStreamCard(word, anno); }
           catch(pe) { card.className = 'sq-card'; card.setAttribute('data-word', word); card.innerHTML = `<div class="sq-word">${esc(word)} <button onclick="speakDirect('${jsEsc(word)}',2)" style="font-size:calc(.75rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🔊</button></div><div style="font-size:.88rem;line-height:1.7;color:var(--text);white-space:pre-wrap">${esc(fullText.trim())}</div>`; }
@@ -1288,7 +1336,7 @@ function doImportWords() {
   const entries = unique.map(w => { const entry = { id:gid(), word:w, date:today, stars:0, annotation:null, status:'loading', showAnno:false, ebLevel:0, nextReviewDate:today, wrongCount:0, note:'' }; words.push(entry); return entry; }); renderWords();
   const tasks = entries.map(entry => ({
     id: gid(), word: entry.word, type: 'import', entry, fn: async () => {
-      try { entry.annotation = await callAI(entry.word); entry.status = 'loaded'; log(`✅ 导入成功: ${entry.word}`); } catch(e) { entry.status = 'error'; log(`❌ 导入失败 [${entry.word}]: ${e.message}`); } markDirty(); renderWords();
+      try { entry.annotation = await callAI(entry.word); entry.status = 'loaded'; log(`✅ 导入成功: ${entry.word}`); } catch(e) { entry.status = 'error'; log(`❌ 导入失败 [${entry.word}]: ${e.message}`); } markDirty(); scheduleRenderWords();
     }
   }));
   TaskManager.add(tasks); toast(`已排队导入 ${unique.length} 个` + (updatedDup ? `，更新 ${updatedDup} 个重复词日期` : '')); setTimeout(()=>closeModal('importModal'), 400);
@@ -1792,7 +1840,7 @@ function importSingleWord(w) {
   
   TaskManager.add([{
       id: gid(), word: w, type: 'import', entry, fn: async () => {
-      try { entry.annotation = await callAI(entry.word); entry.status = 'loaded'; log(`✅ 导入成功: ${entry.word}`); } catch(e) { entry.status = 'error'; log(`❌ 导入失败 [${entry.word}]: ${e.message}`); } markDirty(); renderWords();
+      try { entry.annotation = await callAI(entry.word); entry.status = 'loaded'; log(`✅ 导入成功: ${entry.word}`); } catch(e) { entry.status = 'error'; log(`❌ 导入失败 [${entry.word}]: ${e.message}`); } markDirty(); scheduleRenderWords();
       }
   }]);
   toast(`「${w}」已加入后台导入队列`);
@@ -1801,14 +1849,14 @@ function importSingleWord(w) {
 function regenerate(id) {
   const e = words.find(w=>w.id===id); if (!e) return;
   e.status='loading'; renderWords(); log(`排队重试: ${e.word}`);
-  TaskManager.add([{ id: gid(), word: e.word, type: 'retry', entry: e, fn: async () => { try { e.annotation = await callAI(e.word); e.status='loaded'; log(`✅ 重试成功: ${e.word}`); } catch(err) { e.status='error'; log(`❌ 重试失败 [${e.word}]: ${err.message}`); } markDirty(); renderWords(); } }]);
+  TaskManager.add([{ id: gid(), word: e.word, type: 'retry', entry: e, fn: async () => { try { e.annotation = await callAI(e.word); e.status='loaded'; log(`✅ 重试成功: ${e.word}`); } catch(err) { e.status='error'; log(`❌ 重试失败 [${e.word}]: ${err.message}`); } markDirty(); scheduleRenderWords(); } }]);
   toast(`已加入重试队列`);
 }
 
 function retryAllFailed() {
   const failed = words.filter(w => w.status === 'error'); if (!failed.length) { toast('无失败词'); return; }
   failed.forEach(e => e.status = 'loading'); renderWords(); log(`批量排队重试 ${failed.length} 个单词`);
-  const tasks = failed.map(e => ({ id: gid(), word: e.word, type: 'retry', entry: e, fn: async () => { try { e.annotation = await callAI(e.word); e.status = 'loaded'; log(`✅ 重试成功: ${e.word}`); } catch(err) { e.status = 'error'; log(`❌ 重试失败 [${e.word}]: ${err.message}`); } markDirty(); renderWords(); } }));
+  const tasks = failed.map(e => ({ id: gid(), word: e.word, type: 'retry', entry: e, fn: async () => { try { e.annotation = await callAI(e.word); e.status = 'loaded'; log(`✅ 重试成功: ${e.word}`); } catch(err) { e.status = 'error'; log(`❌ 重试失败 [${e.word}]: ${err.message}`); } markDirty(); scheduleRenderWords(); } }));
   TaskManager.add(tasks); toast(`重试 ${failed.length} 个`); switchTab('st-task', document.querySelectorAll('.tab-btn')[1]);
 }
 
@@ -1864,6 +1912,14 @@ function getSorted() {
 }
 function cmpFn(a,b,m) { switch(m) { case 'date': return b.date.localeCompare(a.date); case 'alpha': return a.word.toLowerCase().localeCompare(b.word.toLowerCase()); case 'stars': return b.stars-a.stars; default: return 0; } }
 
+function scheduleRenderWords(delay = 0) {
+  clearTimeout(renderWordsTimer);
+  renderWordsTimer = setTimeout(() => {
+    renderWordsTimer = null;
+    renderWords();
+  }, delay);
+}
+
 function renderWords() {
   const list = getSorted();
   const ct = document.getElementById('wordCount');
@@ -1875,11 +1931,18 @@ function renderWords() {
   const showDay = document.getElementById('sortPrimary').value === 'date';
   let h='', curDate='';
   const today = fmtNow().slice(0,10);
+  const dayMap = showDay ? new Map() : null;
+  if (showDay) {
+    list.forEach(w => {
+      if (!dayMap.has(w.date)) dayMap.set(w.date, []);
+      dayMap.get(w.date).push(w);
+    });
+  }
 
   for (const w of list) {
     if (showDay && w.date!==curDate) {
       curDate=w.date;
-      const dayWords = list.filter(x=>x.date===curDate);
+      const dayWords = dayMap.get(curDate) || [];
       const isCollapsed = collapsedDays.has(curDate);
       const allSel = dayWords.every(x => selected.has(x.id));
       
@@ -2492,7 +2555,17 @@ function fmtNow() { const d = new Date(); return `${d.getFullYear()}-${String(d.
 function updateClock() { document.getElementById('currentTime').textContent = fmtNow(); }
 function toast(msg) { document.querySelectorAll('.toast').forEach(t=>t.remove()); const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2500); }
 
+let scrollIdleTimer = null;
+function markScrolling() {
+  document.body.classList.add('is-scrolling');
+  clearTimeout(scrollIdleTimer);
+  scrollIdleTimer = setTimeout(() => document.body.classList.remove('is-scrolling'), 140);
+}
+
 document.querySelectorAll('.mc').forEach(btn => { /* onclick 已写 */ });
+document.addEventListener('scroll', markScrolling, { passive: true, capture: true });
+document.addEventListener('wheel', markScrolling, { passive: true });
+document.addEventListener('touchmove', markScrolling, { passive: true });
 document.addEventListener('keydown',e=>{ 
     if(e.key==='Escape') { 
         if(document.getElementById('testModal').style.display==='flex') confirmExitTest(); 
