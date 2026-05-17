@@ -226,16 +226,19 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 @keyframes dots { 0%, 20% { content: ''; } 40% { content: '.'; } 60% { content: '..'; } 80%, 100% { content: '...'; } }
 
 /* Word Popup */
-.word-popup { position: absolute; z-index: 1000; background: var(--card); border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-radius: 10px; width: 280px; display: none; flex-direction: column; animation: fi .2s ease; overflow: hidden; }
+.word-popup { position: absolute; z-index: 1000; background: var(--card); border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-radius: 10px; width: 320px; min-width:300px; min-height:160px; max-width: min(560px, calc(100vw - 20px)); display: none; flex-direction: column; animation: fi .2s ease; overflow: auto; resize: both; }
 .wp-header { background: var(--primary); color: #fff; padding: 8px 12px; font-weight: bold; font-size: 1rem; display: flex; justify-content: space-between; align-items: flex-start; cursor: grab; user-select: none; }
 .wp-header:active { cursor: grabbing; }
 #wpWord { max-height: 80px; overflow-y: auto; display: inline-block; word-break: break-all; margin-right: 10px; flex: 1; }
 .wp-body { padding: 12px; font-size: 0.85rem; line-height: 1.6; color: var(--text); min-height: 60px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
-.wp-note-wrap { padding: 8px 12px; border-top: 1px solid var(--border); background: #fffdf8; display: flex; flex-direction: column; gap: 6px; }
-.wp-note { width: 100%; min-height: 54px; max-height: 110px; resize: vertical; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-family: var(--f); font-size: .82rem; background: #fff; outline: none; }
+.wp-note-wrap { padding: 8px 12px; border-top: 1px solid var(--border); background: #fffdf8; display: none; flex-direction: column; gap: 6px; }
+.wp-note-wrap.show { display: flex; }
+.wp-note-word { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-family: var(--f); font-size: .86rem; font-weight:700; color:var(--primary); background:#fff; outline:none; }
+.wp-note { width: 100%; min-height: 64px; max-height: 140px; resize: vertical; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-family: var(--f); font-size: .82rem; background: #fff; outline: none; }
 .wp-note:focus { border-color: var(--accent); }
 .wp-note-hint { font-size: .72rem; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
-.wp-footer { padding: 8px 12px; background: #f8f9fa; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+.wp-note-actions { display:flex; gap:8px; justify-content:flex-end; }
+.wp-footer { padding: 8px 12px; background: #f8f9fa; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; flex-wrap:wrap; }
 .wp-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; font-size: 0.8rem; transition: background .2s; }
 .wp-btn:hover { background: var(--border); }
 .wp-btn.import { background: var(--pl); color: #fff; border: none; }
@@ -658,9 +661,14 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 <div id="wordPopup" class="word-popup">
   <div class="wp-header"><span id="wpWord">Word</span><button class="mc" style="color:#fff;font-size:1.2rem;opacity:0.8" onclick="hideWordPopup()">×</button></div>
   <div class="wp-body" id="wpBody">加载中...</div>
-  <div class="wp-note-wrap">
+  <div class="wp-note-wrap" id="wpNoteWrap">
     <div class="wp-note-hint"><span>添加到笔记目标词库</span><span id="wpNoteTarget">笔记词库</span></div>
+    <input id="wpNoteWord" class="wp-note-word" placeholder="目标短语/单词">
     <textarea id="wpNoteText" class="wp-note" placeholder="给这个划词/短语写笔记，可留空..."></textarea>
+    <div class="wp-note-actions">
+      <button class="wp-btn" id="wpBtnNoteCancel">取消</button>
+      <button class="wp-btn note" id="wpBtnNoteConfirm">确定添加</button>
+    </div>
   </div>
   <div class="wp-footer">
      <button class="wp-btn" id="wpBtnAudio">🔊 发音</button>
@@ -1839,8 +1847,8 @@ async function showWordPopup(word, x, y, autoSearch = true) {
   const maxH = document.documentElement.scrollHeight;
   
   let left = x, top = y + 20;
-  if (left + 280 > maxW) left = maxW - 290;
-  if (top + 250 > maxH) top = y - 260; // 向上翻
+  if (left + 320 > maxW) left = maxW - 330;
+  if (top + 280 > maxH) top = y - 290; // 向上翻
   
   // 防止翻出页面顶部
   if (top < window.scrollY) top = window.scrollY + 10;
@@ -1851,14 +1859,26 @@ async function showWordPopup(word, x, y, autoSearch = true) {
   document.getElementById('wpWord').textContent = word;
   const body = document.getElementById('wpBody');
   const btnSearch = document.getElementById('wpBtnSearch');
+  const noteWrap = document.getElementById('wpNoteWrap');
+  const noteWord = document.getElementById('wpNoteWord');
   document.getElementById('wpNoteText').value = '';
+  noteWord.value = word;
+  noteWrap.classList.remove('show');
   document.getElementById('wpNoteTarget').textContent = getLibrary(config.noteLibraryId || 'notes').name;
   
   document.getElementById('wpBtnAudio').onclick = () => speakDirect(word, 2);
   document.getElementById('wpBtnImport').onclick = () => { importSingleWord(word); hideWordPopup(); };
   document.getElementById('wpBtnNote').onclick = () => {
+    noteWrap.classList.add('show');
+    noteWord.focus();
+    noteWord.select();
+  };
+  document.getElementById('wpBtnNoteCancel').onclick = () => noteWrap.classList.remove('show');
+  document.getElementById('wpBtnNoteConfirm').onclick = () => {
+    const targetWord = noteWord.value.trim();
+    if (!targetWord) return toast('请输入目标短语/单词');
     const note = document.getElementById('wpNoteText').value.trim();
-    importSingleWord(word, config.noteLibraryId || 'notes', note);
+    importSingleWord(targetWord, config.noteLibraryId || 'notes', note);
     hideWordPopup();
   };
 
@@ -2576,12 +2596,18 @@ function openEdit(id) {
     ['examples','例句',a.examples||'',1],['mnemonics','助记',a.mnemonics||'',1],
     ['note','📝 个人笔记 (不被AI重新生成覆盖)',e.note||'',1]
   ];
-  let h=`<h3 style="margin-bottom:14px;color:var(--primary)">${esc(e.word)}</h3>`; fs.forEach(([k,l,v,ta])=>{ h+=`<div class="ef"><label>${l}</label>${ta?`<textarea id="ed-${k}" style="${k==='note'?'background:#fffde7;border-color:#fbc02d':''}">${esc(v)}</textarea>`:`<input type="text" id="ed-${k}" value="${esc(v)}">`}</div>`; });
+  let h=`<div class="ef"><label>原单词 / 短语</label><input type="text" id="ed-word" value="${esc(e.word)}" style="font-weight:700;color:var(--primary)"></div>`;
+  fs.forEach(([k,l,v,ta])=>{ h+=`<div class="ef"><label>${l}</label>${ta?`<textarea id="ed-${k}" style="${k==='note'?'background:#fffde7;border-color:#fbc02d':''}">${esc(v)}</textarea>`:`<input type="text" id="ed-${k}" value="${esc(v)}">`}</div>`; });
   h+=`<div class="sr" style="margin-top:14px"><button onclick="saveEdit()">💾 保存</button><button onclick="closeModal('editModal')">取消</button></div>`;
   document.getElementById('editBody').innerHTML=h; document.getElementById('editModal').classList.add('show');
 }
 function saveEdit() {
   const e=words.find(w=>w.id===editingId); if(!e) return;
+  const newWord = document.getElementById('ed-word').value.trim();
+  if (!newWord) return toast('原单词/短语不能为空');
+  const dup = words.find(w => w.id !== editingId && w.word.toLowerCase() === newWord.toLowerCase());
+  if (dup) return toast(`「${newWord}」已存在于当前词库`);
+  e.word = newWord;
   e.annotation={phonetic:document.getElementById('ed-phonetic').value,pos:document.getElementById('ed-pos').value,meaning:document.getElementById('ed-meaning').value,phrases:document.getElementById('ed-phrases').value,inflections:document.getElementById('ed-inflections').value,examples:document.getElementById('ed-examples').value,mnemonics:document.getElementById('ed-mnemonics').value};
   e.note=document.getElementById('ed-note').value;
   e.status='loaded'; markDirty(); renderWords(); closeModal('editModal'); toast('已保存');
