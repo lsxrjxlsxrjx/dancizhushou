@@ -258,7 +258,6 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
     <button class="lib-mini" onclick="addLibrary()" title="新增词库">＋</button>
     <button class="lib-mini" onclick="renameLibrary()" title="重命名词库">✎</button>
     <button class="lib-mini" onclick="deleteLibrary()" title="删除当前词库">🗑</button>
-    <button class="lib-mini" onclick="batchRegenerateLibrary()" title="批量重新生成当前词库">🔄</button>
     <button onclick="openImport()">＋ 查询/导入</button>
     <button class="sv" onclick="openCloudSync()">☁️ 云同步</button>
     <button class="rm" id="btnReciteMode" onclick="toggleReciteMode()">🧠 背单词</button>
@@ -312,6 +311,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
       <option value="4" style="color:#000">设为 4★</option>
       <option value="5" style="color:#000">设为 5★</option>
     </select>
+    <button onclick="batchRegenerateSelected()">🔄 重新生成</button>
     <button class="del-btn" onclick="deleteSelected()">🗑 删除</button>
     <button onclick="toggleSelectMode()">退出选择</button>
   </div>
@@ -2051,17 +2051,14 @@ function regenerate(id) {
   toast(`已加入重试队列`);
 }
 
-function batchRegenerateLibrary() {
-  syncCurrentLibraryWords();
-  const lib = getCurrentLibrary();
-  const list = lib.words.filter(w => w && w.word);
-  if (!list.length) { toast('当前词库没有可重新生成的词条'); return; }
-  if (!confirm(`确定批量重新生成「${lib.name}」中的 ${list.length} 个词条释义吗？\n\n会重新调用导入 API，保留日期、星级、笔记、错题和复习进度。`)) return;
+function batchRegenerateSelected() {
+  const list = Array.from(selected).map(id => words.find(w => w.id === id)).filter(w => w && w.word);
+  if (!list.length) { toast('未选择单词'); return; }
+  if (!confirm(`确定重新生成已选 ${list.length} 个词条的释义吗？\n\n会重新调用导入 API，保留日期、星级、笔记、错题和复习进度。`)) return;
   list.forEach(e => e.status = 'loading');
-  words = lib.words;
   markDirty();
   renderWords();
-  log(`批量重新生成「${lib.name}」${list.length} 个词条`);
+  log(`批量重新生成已选 ${list.length} 个词条`);
   const tasks = list.map(e => ({
     id: gid(),
     word: e.word,
@@ -2077,7 +2074,7 @@ function batchRegenerateLibrary() {
         log(`❌ 重新生成失败 [${e.word}]: ${err.message}`);
       }
       markDirty();
-      if (lib.id === currentLibraryId) renderWords();
+      renderWords();
     }
   }));
   TaskManager.add(tasks);
