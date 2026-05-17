@@ -13,6 +13,9 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 .hd-acts{display:flex;gap:6px;flex-wrap:wrap}
 .hd-acts button{background:rgba(255,255,255,.15);border:none;color:#fff;padding:calc(7px * var(--us)) calc(12px * var(--us));border-radius:6px;cursor:pointer;font-size:calc(.82rem * var(--us));font-family:var(--f);transition:background .2s;white-space:nowrap}
 .hd-acts button:hover{background:rgba(255,255,255,.25)}
+.lib-select{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;padding:calc(6px * var(--us)) calc(8px * var(--us));border-radius:6px;font-family:var(--f);font-size:calc(.82rem * var(--us));outline:none;max-width:150px}
+.lib-select option{color:#222}
+.lib-mini{min-width:34px;padding-left:8px!important;padding-right:8px!important}
 .hd-acts .sv{background:var(--accent)}
 .hd-acts .sv:hover{background:#c96a20}
 .hd-acts .rm{background:#8e44ad;font-weight:700}
@@ -228,6 +231,10 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 .wp-header:active { cursor: grabbing; }
 #wpWord { max-height: 80px; overflow-y: auto; display: inline-block; word-break: break-all; margin-right: 10px; flex: 1; }
 .wp-body { padding: 12px; font-size: 0.85rem; line-height: 1.6; color: var(--text); min-height: 60px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
+.wp-note-wrap { padding: 8px 12px; border-top: 1px solid var(--border); background: #fffdf8; display: flex; flex-direction: column; gap: 6px; }
+.wp-note { width: 100%; min-height: 54px; max-height: 110px; resize: vertical; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-family: var(--f); font-size: .82rem; background: #fff; outline: none; }
+.wp-note:focus { border-color: var(--accent); }
+.wp-note-hint { font-size: .72rem; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
 .wp-footer { padding: 8px 12px; background: #f8f9fa; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
 .wp-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; font-size: 0.8rem; transition: background .2s; }
 .wp-btn:hover { background: var(--border); }
@@ -235,6 +242,8 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 .wp-btn.import:hover { background: var(--primary); }
 .wp-btn.search { background: var(--green); color: #fff; border: none; font-weight: bold; }
 .wp-btn.search:hover { background: #2196f3; }
+.wp-btn.note { background: #fbc02d; color: #3a2a00; border: none; font-weight: bold; }
+.wp-btn.note:hover { background: #f9a825; }
 </style>
 </head>
 <body>
@@ -242,6 +251,10 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 <div class="hd"><div class="hd-in">
   <h1>📖 背鸡毛单词 <span class="dirty-dot" id="dirtyDot"></span></h1>
   <div class="hd-acts">
+    <select id="librarySelect" class="lib-select" onchange="switchLibrary(this.value)" title="选择词库"></select>
+    <button class="lib-mini" onclick="addLibrary()" title="新增词库">＋</button>
+    <button class="lib-mini" onclick="renameLibrary()" title="重命名词库">✎</button>
+    <button class="lib-mini" onclick="deleteLibrary()" title="删除当前词库">🗑</button>
     <button onclick="openImport()">＋ 查询/导入</button>
     <button class="sv" onclick="openCloudSync()">☁️ 云同步</button>
     <button class="rm" id="btnReciteMode" onclick="toggleReciteMode()">🧠 背单词</button>
@@ -512,6 +525,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
       <div class="sg"><label>专属 Token (Fine-grained PAT)</label><div style="display:flex;gap:6px"><input type="password" id="cfgGithubToken" style="flex:1" placeholder="填入刚生成的 github_pat_..."><button onclick="toggleVis('cfgGithubToken',this)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:.85rem;flex-shrink:0">👁</button></div></div>
 
       <div style="font-size:.9rem;font-weight:700;color:var(--muted);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--border)">⚙ 其他设置</div>
+      <div class="sg"><label>划词“添加笔记”默认加入词库</label><select id="cfgNoteLibrary"></select></div>
       <div class="sg"><label>后台并发任务数量 (1-20)</label><input type="number" id="cfgConcurrency" min="1" max="20" value="3"></div>
       <div class="sg" style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
         <label style="margin:0">另存为加时间戳</label>
@@ -644,8 +658,13 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 <div id="wordPopup" class="word-popup">
   <div class="wp-header"><span id="wpWord">Word</span><button class="mc" style="color:#fff;font-size:1.2rem;opacity:0.8" onclick="hideWordPopup()">×</button></div>
   <div class="wp-body" id="wpBody">加载中...</div>
+  <div class="wp-note-wrap">
+    <div class="wp-note-hint"><span>添加到笔记目标词库</span><span id="wpNoteTarget">笔记词库</span></div>
+    <textarea id="wpNoteText" class="wp-note" placeholder="给这个划词/短语写笔记，可留空..."></textarea>
+  </div>
   <div class="wp-footer">
      <button class="wp-btn" id="wpBtnAudio">🔊 发音</button>
+     <button class="wp-btn note" id="wpBtnNote">📝 加笔记</button>
      <button class="wp-btn import" id="wpBtnImport">📥 导入</button>
      <button class="wp-btn search" id="wpBtnSearch" style="display:none">🔍 查询</button>
   </div>
@@ -683,6 +702,8 @@ var DEFAULT_W_PROMPT = `你是大学英语六级考试（CET-6）的资深阅卷
 var EB_DAYS = [0, 1, 2, 4, 7, 15, 30, 999]; 
 
 var words = [];
+var libraries = [];
+var currentLibraryId = 'default';
 var config = {};
 var dirty = false;
 var allShown = false;
@@ -716,11 +737,114 @@ function applyUISize(size) {
   document.documentElement.style.setProperty('--us', map[size] || 1);
 }
 
+function normalizeLibraryId(id) {
+  return String(id || '').replace(/[^a-zA-Z0-9_-]/g, '') || gid();
+}
+
+function normalizeLibraries(sourceWords) {
+  let list = Array.isArray(libraries) ? libraries : [];
+  if (!list.length) list = [{ id: 'default', name: '默认词库', words: Array.isArray(sourceWords) ? sourceWords : [] }];
+  list = list.map((lib, idx) => ({
+    id: normalizeLibraryId(lib.id || (idx === 0 ? 'default' : gid())),
+    name: (lib.name || (idx === 0 ? '默认词库' : `词库${idx + 1}`)).trim(),
+    words: Array.isArray(lib.words) ? lib.words : []
+  }));
+  if (!list.some(lib => lib.id === 'default')) list.unshift({ id: 'default', name: '默认词库', words: Array.isArray(sourceWords) ? sourceWords : [] });
+  let noteLib = list.find(lib => lib.id === 'notes');
+  if (!noteLib) list.push({ id: 'notes', name: '笔记词库', words: [] });
+  else noteLib.name = noteLib.name || '笔记词库';
+  libraries = list;
+  libraries.forEach(lib => normalizeWordList(lib.words));
+  if (!libraries.some(lib => lib.id === currentLibraryId)) currentLibraryId = 'default';
+  words = getCurrentLibrary().words;
+}
+
+function getCurrentLibrary() {
+  return libraries.find(lib => lib.id === currentLibraryId) || libraries[0] || { id: 'default', name: '默认词库', words };
+}
+
+function getLibrary(id) {
+  return libraries.find(lib => lib.id === id) || getCurrentLibrary();
+}
+
+function syncCurrentLibraryWords() {
+  const lib = getCurrentLibrary();
+  if (lib) lib.words = words;
+}
+
+function renderLibrarySelects() {
+  const options = libraries.map(lib => `<option value="${esc(lib.id)}">${esc(lib.name)}（${lib.words.length}）</option>`).join('');
+  const sel = document.getElementById('librarySelect');
+  if (sel) { sel.innerHTML = options; sel.value = currentLibraryId; }
+  const noteSel = document.getElementById('cfgNoteLibrary');
+  if (noteSel) {
+    noteSel.innerHTML = options;
+    noteSel.value = config.noteLibraryId || 'notes';
+  }
+  const target = document.getElementById('wpNoteTarget');
+  if (target) target.textContent = getLibrary(config.noteLibraryId || 'notes').name;
+}
+
+function switchLibrary(id) {
+  if (!libraries.some(lib => lib.id === id)) return;
+  syncCurrentLibraryWords();
+  currentLibraryId = id;
+  words = getCurrentLibrary().words;
+  selected.clear();
+  lastClickedId = null;
+  renderLibrarySelects();
+  renderWords();
+  updateSelBar();
+  toast(`已切换到「${getCurrentLibrary().name}」`);
+}
+
+function addLibrary() {
+  const name = prompt('新词库名称：', `词库${Math.max(1, libraries.length)}`);
+  if (!name || !name.trim()) return;
+  syncCurrentLibraryWords();
+  const id = gid();
+  libraries.push({ id, name: name.trim(), words: [] });
+  currentLibraryId = id;
+  words = getCurrentLibrary().words;
+  renderLibrarySelects();
+  markDirty();
+  renderWords();
+}
+
+function renameLibrary() {
+  const lib = getCurrentLibrary();
+  if (lib.id === 'default' || lib.id === 'notes') {
+    const ok = confirm(`「${lib.name}」是内置词库，仍要重命名显示名称吗？`);
+    if (!ok) return;
+  }
+  const name = prompt('词库新名称：', lib.name);
+  if (!name || !name.trim()) return;
+  lib.name = name.trim();
+  renderLibrarySelects();
+  markDirty();
+}
+
+function deleteLibrary() {
+  const lib = getCurrentLibrary();
+  if (lib.id === 'default' || lib.id === 'notes') return toast('默认词库和笔记词库不能删除');
+  if (!confirm(`确定删除「${lib.name}」及其中 ${lib.words.length} 个词条吗？`)) return;
+  libraries = libraries.filter(x => x.id !== lib.id);
+  if (config.noteLibraryId === lib.id) config.noteLibraryId = 'notes';
+  currentLibraryId = 'default';
+  words = getCurrentLibrary().words;
+  selected.clear();
+  renderLibrarySelects();
+  markDirty();
+  renderWords();
+}
+
 function loadEmbedded() {
   try {
     const rawData = document.getElementById('embedded-data').textContent;
     if(!rawData) return;
     const d = JSON.parse(rawData);
+    libraries = Array.isArray(d.libraries) ? d.libraries : [];
+    currentLibraryId = d.currentLibraryId || 'default';
     words = d.words || [];
     normalizeWords();
 
@@ -749,6 +873,7 @@ function loadEmbedded() {
       ansShowExamples: d.config?.ansShowExamples !== false,
       ansShowMnemonics: d.config?.ansShowMnemonics !== false,
       ansShowNote: d.config?.ansShowNote !== false,
+      noteLibraryId: d.config?.noteLibraryId || 'notes',
     };
     
     // 安全策略：强制从本地浏览器 localStorage 提取密钥填充
@@ -759,13 +884,22 @@ function loadEmbedded() {
     config.githubToken = localStorage.getItem('vocab_githubToken') || config.githubToken || '';
     
     ensureConfigDefaults();
+    normalizeLibraries(words);
+    normalizeWords();
     applyUISize(config.uiSize);
+    renderLibrarySelects();
     lastSaveTime = d.lastSaveTime || '';
   } catch(e) { log('读取嵌入数据失败: '+e.message); }
 }
 
 function normalizeWords() {
-  words.forEach(w => {
+  if (!Array.isArray(words)) words = [];
+  normalizeWordList(words);
+}
+
+function normalizeWordList(list) {
+  if (!Array.isArray(list)) return;
+  list.forEach(w => {
     if (w.wrongCount === undefined) w.wrongCount = 0;
     if (w.note === undefined) w.note = "";
   });
@@ -776,6 +910,7 @@ function ensureConfigDefaults() {
   config.parseApiKey = config.parseApiKey || config.qApiKey || '';
   config.parseModelId = config.parseModelId || config.qModelId || '';
   config.wPrompt = config.wPrompt || DEFAULT_W_PROMPT;
+  if (!config.noteLibraryId || !libraries.some(lib => lib.id === config.noteLibraryId)) config.noteLibraryId = 'notes';
 }
 
 function parseSavedAt(value) {
@@ -786,7 +921,8 @@ function parseSavedAt(value) {
 
 function saveLocalCache() {
   try {
-    const data = { words, config: getSafeConfig(), lastSaveTime, localSavedAt: Date.now() };
+    syncCurrentLibraryWords();
+    const data = { words, libraries, currentLibraryId, config: getSafeConfig(), lastSaveTime, localSavedAt: Date.now() };
     localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(data));
   } catch(e) {
     console.warn('[Vocab] 本地缓存写入失败:', e);
@@ -798,7 +934,7 @@ function loadLocalCache() {
     const raw = localStorage.getItem(LOCAL_CACHE_KEY);
     if(!raw) return;
     const cached = JSON.parse(raw);
-    if(!cached || !Array.isArray(cached.words)) return;
+    if(!cached || (!Array.isArray(cached.words) && !Array.isArray(cached.libraries))) return;
 
     const cachedDataStamp = parseSavedAt(cached.lastSaveTime);
     const cacheStamp = cached.localSavedAt || cachedDataStamp;
@@ -814,13 +950,17 @@ function loadLocalCache() {
       githubToken: config.githubToken || ''
     };
 
-    words = cached.words;
-    normalizeWords();
+    libraries = Array.isArray(cached.libraries) ? cached.libraries : [];
+    currentLibraryId = cached.currentLibraryId || currentLibraryId || 'default';
+    words = Array.isArray(cached.words) ? cached.words : [];
     if(cached.config) config = { ...config, ...cached.config, ...secrets };
+    normalizeLibraries(words);
+    normalizeWords();
     ensureConfigDefaults();
     applyUISize(config.uiSize || 'm');
+    renderLibrarySelects();
     lastSaveTime = cached.lastSaveTime || lastSaveTime || '';
-    log(`已从本地缓存恢复 ${words.length} 个单词`);
+    log(`已从本地缓存恢复「${getCurrentLibrary().name}」${words.length} 个词条`);
   } catch(e) {
     log('读取本地缓存失败: ' + e.message);
   }
@@ -953,7 +1093,8 @@ function getSafeConfig() {
 // CLOUD SYNC & FILE I/O (GITHUB GIST)
 // =====================================================
 function getFullHTML() {
-  const data = JSON.stringify({ words, config: getSafeConfig(), lastSaveTime }); const html = document.documentElement.outerHTML;
+  syncCurrentLibraryWords();
+  const data = JSON.stringify({ words, libraries, currentLibraryId, config: getSafeConfig(), lastSaveTime }); const html = document.documentElement.outerHTML;
   const re = /(<script id="embedded-data" type="application\/json">)([\s\S]*?)(<\/script>)/;
   // 使用回调函数返回，彻底阻断内容中带有 $n 的符号对正则替换的破坏
   return '<!DOCTYPE html>\n<html lang="zh-CN">' + html.slice(html.indexOf('<head>')).replace(re, function(match, p1, p2, p3) { 
@@ -973,8 +1114,8 @@ async function saveFile() {
   }
 }
 function dlFile(content, name) { const blob = new Blob([content], { type: 'text/html;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url); markClean(); toast('✅ 已下载'); log(`下载: ${name}`); }
-function markDirty() { dirty = true; saveLocalCache(); document.getElementById('dirtyDot').classList.add('on'); }
-function markClean() { dirty = false; saveLocalCache(); document.getElementById('dirtyDot').classList.remove('on'); document.getElementById('lastSaveTime').textContent = lastSaveTime; }
+function markDirty() { dirty = true; saveLocalCache(); renderLibrarySelects(); document.getElementById('dirtyDot').classList.add('on'); }
+function markClean() { dirty = false; saveLocalCache(); renderLibrarySelects(); document.getElementById('dirtyDot').classList.remove('on'); document.getElementById('lastSaveTime').textContent = lastSaveTime; }
 window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
 function openCloudSync() { document.getElementById('cloudSyncModal').classList.add('show'); }
@@ -1028,7 +1169,8 @@ async function doCloudUpload() {
       if(getResp.ok) { const fileData = await getResp.json(); sha = fileData.sha; }
 
       // 2. 准备数据并进行 Base64 编码 (解决中文乱码)
-      const contentStr = JSON.stringify({ words, config: getSafeConfig(), lastSaveTime: fmtNow() });
+      syncCurrentLibraryWords();
+      const contentStr = JSON.stringify({ words, libraries, currentLibraryId, config: getSafeConfig(), lastSaveTime: fmtNow() });
       const base64Content = btoa(unescape(encodeURIComponent(contentStr)));
 
       // 3. 发送更新请求
@@ -1076,7 +1218,8 @@ async function doCloudUpload() {
       }
 
       // 2. 准备数据并进行 Base64 编码
-      const contentStr = JSON.stringify({ words, config: getSafeConfig(), lastSaveTime: fmtNow() });
+      syncCurrentLibraryWords();
+      const contentStr = JSON.stringify({ words, libraries, currentLibraryId, config: getSafeConfig(), lastSaveTime: fmtNow() });
       const base64Content = btoa(unescape(encodeURIComponent(contentStr)));
 
       // 3. 发送更新请求
@@ -1131,21 +1274,26 @@ async function doCloudDownload() {
       const recordStr = await resp.text();
       if(!recordStr) throw new Error('云端仓库数据为空');
       const record = JSON.parse(recordStr);
-      if(!record || !record.words) throw new Error('云端数据格式错误');
+      if(!record || (!record.words && !record.libraries)) throw new Error('云端数据格式错误');
       
-      words = record.words;
+      libraries = Array.isArray(record.libraries) ? record.libraries : [];
+      currentLibraryId = record.currentLibraryId || 'default';
+      words = Array.isArray(record.words) ? record.words : [];
       if(record.config) {
           let c = record.config;
           c.apiKey = config.apiKey; c.qApiKey = config.qApiKey;
           c.parseApiKey = config.parseApiKey;
           c.gistId = config.gistId; c.githubToken = config.githubToken;
           config = { ...config, ...c };
-          ensureConfigDefaults();
-          applyUISize(config.uiSize || 'm');
       }
+      normalizeLibraries(words);
+      normalizeWords();
+      ensureConfigDefaults();
+      applyUISize(config.uiSize || 'm');
+      renderLibrarySelects();
       lastSaveTime = record.lastSaveTime || fmtNow();
       markDirty(); renderWords();
-      toast('✅ 从仓库下载成功'); log(`从云端下载了 ${words.length} 个单词`);
+      toast('✅ 从仓库下载成功'); log(`从云端下载了 ${libraries.reduce((n, lib)=>n + lib.words.length, 0)} 个词条`);
       closeModal('cloudSyncModal');
   } catch(e) {
       const msg = cloudFetchErrorMessage(e);
@@ -1543,7 +1691,8 @@ function handleGlobalSelection(e) {
         if (sel && sel.length > 0 && sel.length < 100) {
             const selNode = window.getSelection().anchorNode;
             const paraBox = document.getElementById('paraStreamBox');
-            if (selNode && paraBox.contains(selNode)) {
+            const writingBox = document.getElementById('writingStreamBox');
+            if (selNode && ((paraBox && paraBox.contains(selNode)) || (writingBox && writingBox.contains(selNode)))) {
                 if (Date.now() - lastWordPopupTime < 500) return; // 防抖，拦截幽灵重发
                 lastWordPopupTime = Date.now();
 
@@ -1595,13 +1744,17 @@ function onPtrUp(e) {
 }
 
 const pBox = document.getElementById('paraStreamBox');
-pBox.addEventListener('mousedown', onPtrDown);
-pBox.addEventListener('mouseup', onPtrUp);
-pBox.addEventListener('touchstart', onPtrDown, {passive: true});
-pBox.addEventListener('touchend', onPtrUp);
+const wReviewBox = document.getElementById('writingStreamBox');
+[pBox, wReviewBox].forEach(box => {
+  if (!box) return;
+  box.addEventListener('mousedown', onPtrDown);
+  box.addEventListener('mouseup', onPtrUp);
+  box.addEventListener('touchstart', onPtrDown, {passive: true});
+  box.addEventListener('touchend', onPtrUp);
+});
 
 // 电脑端保留传统的双击直接查自动模式
-pBox.addEventListener('dblclick', function(e) {
+function handleAnalysisDblClick(e) {
     const sel = window.getSelection().toString().trim();
     if(sel.length > 0 && sel.length < 100) {
         if (Date.now() - lastWordPopupTime < 500) return;
@@ -1609,7 +1762,8 @@ pBox.addEventListener('dblclick', function(e) {
         window.getSelection().removeAllRanges();
         showWordPopup(sel, e.pageX, e.pageY, true); // true 代表自动模式
     }
-});
+}
+[pBox, wReviewBox].forEach(box => box && box.addEventListener('dblclick', handleAnalysisDblClick));
 
 function extractWordAtPoint(cx, cy, px, py) {
     let range;
@@ -1697,9 +1851,16 @@ async function showWordPopup(word, x, y, autoSearch = true) {
   document.getElementById('wpWord').textContent = word;
   const body = document.getElementById('wpBody');
   const btnSearch = document.getElementById('wpBtnSearch');
+  document.getElementById('wpNoteText').value = '';
+  document.getElementById('wpNoteTarget').textContent = getLibrary(config.noteLibraryId || 'notes').name;
   
   document.getElementById('wpBtnAudio').onclick = () => speakDirect(word, 2);
   document.getElementById('wpBtnImport').onclick = () => { importSingleWord(word); hideWordPopup(); };
+  document.getElementById('wpBtnNote').onclick = () => {
+    const note = document.getElementById('wpNoteText').value.trim();
+    importSingleWord(word, config.noteLibraryId || 'notes', note);
+    hideWordPopup();
+  };
 
   const executeSearch = async () => {
       btnSearch.style.display = 'none';
@@ -1777,25 +1938,31 @@ async function showWordPopup(word, x, y, autoSearch = true) {
   }
 }
 
-function importSingleWord(w) {
-  const existing = words.find(x => x.word.toLowerCase() === w.toLowerCase());
+function importSingleWord(w, targetLibraryId, noteText = '') {
+  syncCurrentLibraryWords();
+  const lib = getLibrary(targetLibraryId || currentLibraryId);
+  const list = lib.words;
+  const existing = list.find(x => x.word.toLowerCase() === w.toLowerCase());
   const today = fmtNow().slice(0,10);
   if(existing) {
     existing.date = today;
-    markDirty(); renderWords();
+    if (noteText) existing.note = existing.note ? `${existing.note}\n${noteText}` : noteText;
+    markDirty();
+    if (lib.id === currentLibraryId) renderWords();
     log(`更新重复词日期: ${existing.word}`);
-    return toast(`「${w}」已存在，已更新日期`);
+    return toast(`「${w}」已存在于「${lib.name}」，已更新日期${noteText ? '和笔记' : ''}`);
   }
 
-  const entry = { id:gid(), word:w, date:today, stars:0, annotation:null, status:'loading', showAnno:false, ebLevel:0, nextReviewDate:today, wrongCount:0, note:'' }; 
-  words.push(entry); renderWords();
+  const entry = { id:gid(), word:w, date:today, stars:0, annotation:null, status:'loading', showAnno:false, ebLevel:0, nextReviewDate:today, wrongCount:0, note:noteText };
+  list.push(entry);
+  if (lib.id === currentLibraryId) { words = list; renderWords(); }
   
   TaskManager.add([{
       id: gid(), word: w, type: 'import', entry, fn: async () => {
-      try { entry.annotation = await callAI(entry.word); entry.status = 'loaded'; log(`✅ 导入成功: ${entry.word}`); } catch(e) { entry.status = 'error'; log(`❌ 导入失败 [${entry.word}]: ${e.message}`); } markDirty(); renderWords();
+      try { entry.annotation = await callAI(entry.word); entry.status = 'loaded'; log(`✅ 导入成功: ${entry.word}`); } catch(e) { entry.status = 'error'; log(`❌ 导入失败 [${entry.word}]: ${e.message}`); } markDirty(); if (lib.id === currentLibraryId) renderWords();
       }
   }]);
-  toast(`「${w}」已加入后台导入队列`);
+  toast(`「${w}」已加入「${lib.name}」导入队列`);
 }
 
 function regenerate(id) {
@@ -1868,7 +2035,8 @@ function renderWords() {
   const list = getSorted();
   const ct = document.getElementById('wordCount');
   const failCount = words.filter(w=>w.status==='error').length;
-  ct.textContent = `共 ${words.length} 个` + (list.length!==words.length ? `，当前符合条件 ${list.length}` : '') + (failCount ? `，${failCount} 个失败` : '');
+  const libName = getCurrentLibrary().name || '当前词库';
+  ct.textContent = `${libName}：共 ${words.length} 个` + (list.length!==words.length ? `，当前符合条件 ${list.length}` : '') + (failCount ? `，${failCount} 个失败` : '');
   const el = document.getElementById('wordList');
   if (!list.length) { el.innerHTML=`<div class="es"><div class="icon">📭</div><p>无匹配数据</p></div>`; return; }
 
@@ -2311,6 +2479,8 @@ function openSettings() {
   document.getElementById('cfgGistId').value=config.gistId || ''; 
   document.getElementById('cfgGithubToken').value=config.githubToken || '';
   
+  renderLibrarySelects();
+  document.getElementById('cfgNoteLibrary').value = config.noteLibraryId || 'notes';
   document.getElementById('cfgConcurrency').value=config.concurrencyLimit || 3; 
   syncUI('cfgTimestamp','tsTrack','tsKnob', config.timestamp);
   syncUI('cfgAutoPronounce','apTrack','apKnob', config.autoPronounce);
@@ -2355,6 +2525,7 @@ function saveSettings() {
   
   config.gistId=normalizeGithubRepoPath(document.getElementById('cfgGistId').value);
   config.githubToken=normalizeGithubToken(document.getElementById('cfgGithubToken').value);
+  config.noteLibraryId=document.getElementById('cfgNoteLibrary').value || 'notes';
   document.getElementById('cfgGistId').value=config.gistId;
   document.getElementById('cfgGithubToken').value=config.githubToken;
   
@@ -2416,7 +2587,7 @@ function saveEdit() {
   e.status='loaded'; markDirty(); renderWords(); closeModal('editModal'); toast('已保存');
 }
 
-function exportJson() { const data = { words, config: getSafeConfig(), lastSaveTime }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `词汇_${getTimestamp()}.json`; a.click(); URL.revokeObjectURL(url); toast('✅ 已导出'); log('导出了 JSON 文件'); }
+function exportJson() { syncCurrentLibraryWords(); const data = { words, libraries, currentLibraryId, config: getSafeConfig(), lastSaveTime }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `词汇_${getTimestamp()}.json`; a.click(); URL.revokeObjectURL(url); toast('✅ 已导出'); log('导出了 JSON 文件'); }
 
 function handleJsonImport(e) {
   const file = e.target.files[0];
@@ -2425,15 +2596,38 @@ function handleJsonImport(e) {
   reader.onload = function(ev) {
     try {
       const data = JSON.parse(ev.target.result);
-      if (!data.words) throw new Error('无效数据');
-      const merge = confirm(`文件包含 ${data.words.length} 个单词。\n确定=合并，取消=替换全部`);
+      if (!data.words && !data.libraries) throw new Error('无效数据');
+      const importLibs = Array.isArray(data.libraries) ? data.libraries : null;
+      const totalWords = importLibs ? importLibs.reduce((n, lib) => n + (Array.isArray(lib.words) ? lib.words.length : 0), 0) : data.words.length;
+      const merge = confirm(`文件包含 ${totalWords} 个词条。\n确定=合并，取消=替换全部`);
+      let shouldSyncWords = false;
       if (merge) {
-        const ext = new Set(words.map(w => w.word.toLowerCase()));
-        const nw = data.words.filter(w => !ext.has(w.word.toLowerCase()));
-        words = [...words, ...nw];
+        syncCurrentLibraryWords();
+        if (importLibs) {
+          importLibs.forEach(src => {
+            const srcWords = Array.isArray(src.words) ? src.words : [];
+            let lib = libraries.find(x => x.id === src.id) || libraries.find(x => x.name === src.name);
+            if (!lib) { lib = { id: normalizeLibraryId(src.id || gid()), name: src.name || '导入词库', words: [] }; libraries.push(lib); }
+            const ext = new Set(lib.words.map(w => w.word.toLowerCase()));
+            lib.words = [...lib.words, ...srcWords.filter(w => !ext.has(w.word.toLowerCase()))];
+          });
+          words = getCurrentLibrary().words;
+        } else {
+          const ext = new Set(words.map(w => w.word.toLowerCase()));
+          const nw = data.words.filter(w => !ext.has(w.word.toLowerCase()));
+          words = [...words, ...nw];
+          shouldSyncWords = true;
+        }
       } else {
-        words = data.words;
+        libraries = importLibs || [];
+        currentLibraryId = data.currentLibraryId || 'default';
+        words = Array.isArray(data.words) ? data.words : [];
+        shouldSyncWords = !importLibs;
       }
+      if (shouldSyncWords) syncCurrentLibraryWords();
+      normalizeLibraries(words);
+      normalizeWords();
+      renderLibrarySelects();
       
       if (data.config && confirm('是否导入设置？')) {
         let c = data.config;
@@ -2458,7 +2652,7 @@ function handleJsonImport(e) {
       markDirty();
       renderWords();
       toast('导入成功');
-      log(`导入了 ${data.words.length} 个单词`);
+      log(`导入了 ${totalWords} 个词条`);
     } catch(err) {
       toast('❌ 导入失败');
       log(`导入失败: ${err.message}`);
@@ -2468,7 +2662,7 @@ function handleJsonImport(e) {
   e.target.value = '';
 }
 
-function clearAll() { if(!confirm('确定清空所有数据？')) return; words=[]; markDirty(); renderWords(); toast('已清空'); log('清空了所有单词数据'); }
+function clearAll() { if(!confirm(`确定清空当前词库「${getCurrentLibrary().name}」的所有数据？`)) return; words=[]; syncCurrentLibraryWords(); markDirty(); renderWords(); toast('已清空当前词库'); log(`清空了词库: ${getCurrentLibrary().name}`); }
 
 var currentAudio = null;
 function playWord(id) { const e = words.find(w=>w.id===id); if (e) speakDirect(e.word, 2); }
