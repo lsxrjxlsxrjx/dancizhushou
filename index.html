@@ -1043,7 +1043,7 @@ function renderLibraryManager() {
       <div class="sg"><label>取词顺序</label><select id="plannerOrderMode" onchange="savePlannerSettings()"><option value="sequential" ${lib.plan.orderMode === 'sequential' ? 'selected' : ''}>按导入顺序</option><option value="random" ${lib.plan.orderMode === 'random' ? 'selected' : ''}>随机抽取（不会重复）</option></select></div>
       <div class="lm-actions"><button class="primary" onclick="useManagerLibrary()">设为当前词库</button><button onclick="renameManagerLibrary()">保存名称</button>${builtIn ? '' : '<button class="danger" onclick="deleteManagerLibrary()">删除词库</button>'}</div>
     </div>
-    <div class="lm-card"><h3>导入待学习单词</h3><textarea id="plannerPoolInput" class="ia lm-raw" placeholder="粘贴数千个单词；支持换行、空格、逗号或分号分隔。这里只保存原始单词，不调用 AI。"></textarea><p class="lm-tip">导入时自动去重；已经加入当前词库的单词不会再次进入待学习列表。</p><div class="lm-actions" style="margin-top:10px"><button onclick="importPlannerPool()">导入原始词汇</button></div></div>
+    <div class="lm-card"><h3>导入待学习单词</h3><textarea id="plannerPoolInput" class="ia lm-raw" placeholder="每行一个完整单词或短语；同一行也可用中英文逗号、分号分隔。这里只保存原始词条，不调用 AI。"></textarea><p class="lm-tip">导入时自动去重；已经加入当前词库的词条不会再次进入待学习列表。</p><div class="lm-actions" style="margin-top:10px"><button onclick="importPlannerPool()">导入原始词汇</button></div></div>
     <div class="lm-card"><h3>原始词清单</h3><div class="lm-source-tools"><div class="sg"><label>搜索原始单词</label><input id="plannerSourceSearch" placeholder="输入单词筛选" oninput="plannerSourcePage=1;renderPlannerSourceList()"></div><div class="lm-actions"><button onclick="exportPlannerSourceWords()" ${sourceCount ? '' : 'disabled'}>⬇ 导出原始词汇 TXT</button></div></div><div id="plannerSourceList" class="lm-source-list"></div><div class="lm-actions" style="justify-content:space-between;margin-top:8px"><button id="plannerSourcePrev" onclick="changePlannerSourcePage(-1)">上一页</button><span id="plannerSourcePageInfo" class="lm-tip" style="margin:0"></span><button id="plannerSourceNext" onclick="changePlannerSourcePage(1)">下一页</button></div></div>
     <div class="lm-card"><h3>添加今日词汇</h3><div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap"><div class="sg" style="margin:0;flex:1;min-width:140px"><label>本次添加数量</label><input id="plannerTakeCount" type="number" min="1" max="500" value="${Math.min(lib.plan.dailyCount, Math.max(1, pool.length))}"></div><div class="lm-actions"><button class="primary" onclick="addPlannerTodayWords()" ${pool.length ? '' : 'disabled'}>添加并生成 AI 释义</button></div></div><p class="lm-tip">选出的单词会加入这个词库，并直接复用普通导入的 AI 释义生成队列。之后可关闭窗口，在主界面查看进度并背诵。</p></div>`;
   renderPlannerSourceList();
@@ -1096,7 +1096,11 @@ function savePlannerSettings() {
 }
 
 function parsePlannerWords(text) {
-  return String(text || '').split(/[\s,，;；]+/).map(word => word.trim()).filter(Boolean);
+  return String(text || '')
+    .split(/\r\n?|\n/)
+    .flatMap(line => line.split(/[,，;；]+/))
+    .map(word => word.trim())
+    .filter(Boolean);
 }
 
 function renderPlannerSourceList() {
