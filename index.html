@@ -15,7 +15,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 .hd-acts button:hover{background:rgba(255,255,255,.25)}
 .lib-select{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;padding:calc(6px * var(--us)) calc(8px * var(--us));border-radius:6px;font-family:var(--f);font-size:calc(.82rem * var(--us));outline:none;max-width:150px}
 .lib-select option{color:#222}
-.lib-mini{min-width:34px;padding-left:8px!important;padding-right:8px!important}
+.lib-manage-btn{background:rgba(255,255,255,.24)!important;border:1px solid rgba(255,255,255,.35)!important;font-weight:700}
 .hd-acts .sv{background:var(--accent)}
 .hd-acts .sv:hover{background:#c96a20}
 .hd-acts .rm{background:#8e44ad;font-weight:700}
@@ -131,11 +131,44 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 .tk-type.query{background:#e8f5e9;color:#2e7d32}
 .tk-type.retry{background:#fff3e0;color:#e65100}
 
+/* Library manager */
+.lm-layout{display:grid;grid-template-columns:minmax(180px,220px) 1fr;gap:16px;min-height:390px}
+.lm-list{border:1px solid var(--border);border-radius:10px;padding:8px;background:var(--bg);overflow-y:auto;max-height:58vh}
+.lm-item{width:100%;text-align:left;border:1px solid transparent;border-radius:8px;background:transparent;padding:10px;margin-bottom:5px;cursor:pointer;font-family:var(--f);color:var(--text)}
+.lm-item:hover{background:var(--card);border-color:var(--border)}
+.lm-item.active{background:var(--card);border-color:var(--pl);box-shadow:var(--shadow)}
+.lm-item-name{display:block;font-weight:700;overflow-wrap:anywhere}
+.lm-item-meta{display:block;color:var(--muted);font-size:.72rem;margin-top:4px}
+.lm-panel{min-width:0}
+.lm-card{border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;background:var(--card)}
+.lm-card h3{font-size:.92rem;color:var(--pl);margin-bottom:10px}
+.lm-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.lm-stats.four{grid-template-columns:repeat(4,1fr)}
+.lm-stat{background:var(--bg);border-radius:8px;padding:9px;text-align:center}
+.lm-stat strong{display:block;font-size:1.05rem;color:var(--primary)}
+.lm-stat span{font-size:.7rem;color:var(--muted)}
+.lm-actions{display:flex;gap:8px;flex-wrap:wrap}
+.lm-actions button{font-family:var(--f);padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:var(--bg);cursor:pointer}
+.lm-actions button.primary{background:var(--pl);border-color:var(--pl);color:#fff}
+.lm-actions button.danger{color:var(--red);border-color:var(--red)}
+.lm-raw{min-height:120px;max-height:220px}
+.lm-tip{font-size:.75rem;color:var(--muted);line-height:1.55;margin-top:6px}
+.lm-source-list{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:10px}
+.lm-source-row{display:grid;grid-template-columns:52px minmax(0,1fr) 76px;gap:8px;align-items:center;padding:7px 10px;border-bottom:1px solid var(--border);font-size:.8rem}
+.lm-source-row:last-child{border-bottom:none}
+.lm-source-no{color:var(--muted);font-family:var(--fm)}
+.lm-source-word{font-weight:700;color:var(--primary);overflow-wrap:anywhere}
+.lm-source-status{font-size:.7rem;text-align:center;padding:2px 5px;border-radius:10px;background:#fff3e0;color:#e65100}
+.lm-source-status.added{background:#e8f5e9;color:#2e7d32}
+.lm-source-tools{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.lm-source-tools .sg{margin:0;flex:1;min-width:160px}
+
 @media(max-width:600px){
 .hd{padding:10px 14px}.hd-in{align-items:flex-start;flex-direction:column;gap:8px}.hd h1{font-size:1rem;white-space:nowrap}.hd-acts{width:100%}.hd-acts button{padding:calc(6px * var(--us)) calc(8px * var(--us));font-size:calc(.75rem * var(--us))}
 .tb{padding:8px 14px;position:static}.tb-in{gap:6px}.wl{padding:8px 14px 80px}
 .wcd{padding:10px 12px}.wt{flex-wrap:wrap;gap:7px}.wn{font-size:1.05rem;flex:1 1 calc(100% - 100px);overflow-wrap:anywhere}.wa{margin-left:auto}.ws{order:3;width:100%;margin-left:0;flex-wrap:wrap}.ws span.st{font-size:1.05rem}
-.md{border-radius:10px}.mb{padding:16px}.ar{gap:4px 10px}.wc{padding:0 14px}
+  .md{border-radius:10px}.mb{padding:16px}.ar{gap:4px 10px}.wc{padding:0 14px}
+  .lm-layout{grid-template-columns:1fr}.lm-list{max-height:180px}.lm-stats{grid-template-columns:repeat(3,1fr)}.lm-stats.four{grid-template-columns:repeat(2,1fr)}
 }
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:#aaa}
 
@@ -255,9 +288,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
   <h1>📖 背鸡毛单词 <span class="dirty-dot" id="dirtyDot"></span></h1>
   <div class="hd-acts">
     <select id="librarySelect" class="lib-select" onchange="switchLibrary(this.value)" title="选择词库"></select>
-    <button class="lib-mini" onclick="addLibrary()" title="新增词库">＋</button>
-    <button class="lib-mini" onclick="renameLibrary()" title="重命名词库">✎</button>
-    <button class="lib-mini" onclick="deleteLibrary()" title="删除当前词库">🗑</button>
+    <button class="lib-manage-btn" onclick="openLibraryManager()">📚 管理词库</button>
     <button onclick="openImport()">＋ 查询/导入</button>
     <button class="sv" onclick="openCloudSync()">☁️ 云同步</button>
     <button class="rm" id="btnReciteMode" onclick="toggleReciteMode()">🧠 背单词</button>
@@ -378,6 +409,23 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
     <div class="sr" style="margin-top:30px;display:flex;gap:10px">
       <button onclick="applyFilter()" style="flex:2;background:var(--primary);color:#fff">应用筛选</button>
       <button onclick="resetFilter()" style="flex:1">重置全部</button>
+    </div>
+  </div>
+</div></div>
+
+<div class="mo" id="libraryManagerModal"><div class="md" style="max-width:850px;width:min(850px,100%);min-height:480px">
+  <div class="mh"><h2>📚 管理词库</h2><button class="mc" onclick="closeModal('libraryManagerModal')">×</button></div>
+  <div class="mb">
+    <div class="lm-layout">
+      <div>
+        <div class="lm-list" id="libraryManagerList"></div>
+        <div class="sg" style="margin:10px 0 8px"><label>新词库名称</label><input id="newLibraryName" placeholder="例如：雅思核心词汇"></div>
+        <div class="lm-actions" style="margin-top:10px">
+          <button class="primary" onclick="createLibraryFromManager('normal')">＋ 普通词库</button>
+          <button onclick="createLibraryFromManager('planned')">＋ 规划词库</button>
+        </div>
+      </div>
+      <div class="lm-panel" id="libraryManagerPanel"></div>
     </div>
   </div>
 </div></div>
@@ -713,7 +761,7 @@ var DEFAULT_W_PROMPT = `你是大学英语六级考试（CET-6）的资深阅卷
 
 // L0=0天(当日), L1=1天后, L2=2天后...
 var EB_DAYS = [0, 1, 2, 4, 7, 15, 30, 999];
-var DATA_SCHEMA_VERSION = 2;
+var DATA_SCHEMA_VERSION = 4;
 var REVIEW_DAY_MS = 24 * 60 * 60 * 1000;
 
 var words = [];
@@ -730,6 +778,9 @@ var displayMode = 'word';
 var selectMode = false;
 var reciteMode = false; 
 var selected = new Set();
+var managerLibraryId = '';
+var plannerSourcePage = 1;
+var PLANNER_SOURCE_PAGE_SIZE = 100;
 var collapsedDays = new Set();
 var rangeState = 0;
 var rangeStartId = null;
@@ -770,14 +821,62 @@ function normalizeLibraryId(id) {
 function normalizeLibraries(sourceWords) {
   let list = Array.isArray(libraries) ? libraries : [];
   if (!list.length) list = [{ id: 'default', name: '默认词库', words: Array.isArray(sourceWords) ? sourceWords : [] }];
-  list = list.filter(lib => lib && typeof lib === 'object').map((lib, idx) => ({
-    id: normalizeLibraryId(lib.id || (idx === 0 ? 'default' : gid())),
-    name: String(lib.name || (idx === 0 ? '默认词库' : `词库${idx + 1}`)).trim(),
-    words: Array.isArray(lib.words) ? lib.words : []
-  }));
-  if (!list.some(lib => lib.id === 'default')) list.unshift({ id: 'default', name: '默认词库', words: Array.isArray(sourceWords) ? sourceWords : [] });
+  list = list.filter(lib => lib && typeof lib === 'object').map((lib, idx) => {
+    const type = lib.type === 'planned' ? 'planned' : 'normal';
+    const normalized = {
+      ...lib,
+      id: normalizeLibraryId(lib.id || (idx === 0 ? 'default' : gid())),
+      name: String(lib.name || (idx === 0 ? '默认词库' : `词库${idx + 1}`)).trim(),
+      type,
+      words: Array.isArray(lib.words) ? lib.words : []
+    };
+    if (type === 'planned') {
+      const sourceSeed = Array.isArray(lib.sourceWords) && lib.sourceWords.length
+        ? lib.sourceWords
+        : [
+            ...(Array.isArray(lib.pool) ? lib.pool : []),
+            ...normalized.words.filter(w => w && w.planSourceOrder !== undefined).map(w => ({ id:w.planSourceId, word:w.word, order:w.planSourceOrder, activeWordId:w.id }))
+          ];
+      const seen = new Set();
+      normalized.sourceWords = sourceSeed.map((item, order) => {
+        const word = String(typeof item === 'string' ? item : item?.word || '').trim();
+        return {
+          id: normalizeLibraryId(typeof item === 'object' ? item.id : ''),
+          word,
+          order: Number.isFinite(Number(item?.order)) ? Number(item.order) : order,
+          activeWordId: typeof item === 'object' ? String(item.activeWordId || '') : ''
+        };
+      }).filter(item => {
+        const key = item.word.toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key); return true;
+      });
+      normalized.sourceWords.forEach(source => {
+        const active = normalized.words.find(w => w && (
+          (source.activeWordId && w.id === source.activeWordId) ||
+          (w.planSourceId && w.planSourceId === source.id) ||
+          (w.planSourceOrder !== undefined && Number(w.planSourceOrder) === source.order) ||
+          (w.planSourceOrder !== undefined && String(w.word || '').toLowerCase() === source.word.toLowerCase())
+        ));
+        if (active) { source.activeWordId = active.id; active.planSourceId = source.id; active.planSourceOrder = source.order; }
+        else source.activeWordId = '';
+      });
+      normalized.pool = normalized.sourceWords.filter(item => !item.activeWordId).map(item => ({ id:item.id, word:item.word, order:item.order }));
+      normalized.plan = {
+        dailyCount: Math.max(1, Math.min(500, parseInt(lib.plan?.dailyCount, 10) || 50)),
+        orderMode: lib.plan?.orderMode === 'random' ? 'random' : 'sequential',
+        sourceCount: normalized.sourceWords.length
+      };
+    } else {
+      delete normalized.pool;
+      delete normalized.plan;
+      delete normalized.sourceWords;
+    }
+    return normalized;
+  });
+  if (!list.some(lib => lib.id === 'default')) list.unshift({ id: 'default', name: '默认词库', type:'normal', words: Array.isArray(sourceWords) ? sourceWords : [] });
   let noteLib = list.find(lib => lib.id === 'notes');
-  if (!noteLib) list.push({ id: 'notes', name: '笔记词库', words: [] });
+  if (!noteLib) list.push({ id: 'notes', name: '笔记词库', type:'normal', words: [] });
   else noteLib.name = noteLib.name || '笔记词库';
   libraries = list;
   libraries.forEach(lib => normalizeWordList(lib.words));
@@ -799,7 +898,7 @@ function syncCurrentLibraryWords() {
 }
 
 function renderLibrarySelects() {
-  const options = libraries.map(lib => `<option value="${esc(lib.id)}">${esc(lib.name)}（${lib.words.length}）</option>`).join('');
+  const options = libraries.map(lib => `<option value="${esc(lib.id)}">${lib.type === 'planned' ? '📅 ' : ''}${esc(lib.name)}（${lib.words.length}）</option>`).join('');
   const sel = document.getElementById('librarySelect');
   if (sel) { sel.innerHTML = options; sel.value = currentLibraryId; }
   const noteSel = document.getElementById('cfgNoteLibrary');
@@ -863,6 +962,195 @@ function deleteLibrary() {
   renderLibrarySelects();
   markDirty();
   renderWords();
+}
+
+function openLibraryManager() {
+  syncCurrentLibraryWords();
+  managerLibraryId = currentLibraryId;
+  renderLibraryManager();
+  document.getElementById('libraryManagerModal').classList.add('show');
+}
+
+function getManagerLibrary() {
+  return libraries.find(lib => lib.id === managerLibraryId) || getCurrentLibrary();
+}
+
+function refreshPlannerPool(lib) {
+  if (!lib || lib.type !== 'planned') return [];
+  if (!Array.isArray(lib.sourceWords)) lib.sourceWords = [];
+  lib.sourceWords.forEach(source => {
+    let active = source.activeWordId ? lib.words.find(w => w.id === source.activeWordId) : null;
+    if (!active) active = lib.words.find(w => w.planSourceId === source.id || (w.planSourceOrder !== undefined && Number(w.planSourceOrder) === Number(source.order)));
+    if (active) { source.activeWordId = active.id; active.planSourceId = source.id; active.planSourceOrder = source.order; }
+    else source.activeWordId = '';
+  });
+  lib.pool = lib.sourceWords.filter(source => !source.activeWordId).map(source => ({ id:source.id, word:source.word, order:source.order }));
+  lib.plan = lib.plan || { dailyCount:50, orderMode:'sequential' };
+  lib.plan.sourceCount = lib.sourceWords.length;
+  return lib.pool;
+}
+
+function renderLibraryManager() {
+  const listEl = document.getElementById('libraryManagerList');
+  const panel = document.getElementById('libraryManagerPanel');
+  if (!listEl || !panel) return;
+  const today = localDateKey();
+  listEl.innerHTML = libraries.map(lib => {
+    const poolCount = lib.type === 'planned' ? refreshPlannerPool(lib).length : 0;
+    const sourceCount = lib.type === 'planned' ? (lib.sourceWords || []).length : 0;
+    const meta = lib.type === 'planned' ? `规划词库 · 原始 ${sourceCount} · 已加入 ${lib.words.length} · 待加入 ${poolCount}` : `普通词库 · ${lib.words.length} 个词`;
+    return `<button class="lm-item ${lib.id === managerLibraryId ? 'active' : ''}" onclick="selectManagerLibrary('${esc(lib.id)}')"><span class="lm-item-name">${lib.type === 'planned' ? '📅 ' : '📖 '}${esc(lib.name)}</span><span class="lm-item-meta">${meta}</span></button>`;
+  }).join('');
+  const lib = getManagerLibrary();
+  managerLibraryId = lib.id;
+  const builtIn = lib.id === 'default' || lib.id === 'notes';
+  if (lib.type !== 'planned') {
+    panel.innerHTML = `<div class="lm-card"><h3>词库信息</h3><div class="lm-stats"><div class="lm-stat"><strong>${lib.words.length}</strong><span>当前词条</span></div><div class="lm-stat"><strong>普通</strong><span>词库类型</span></div><div class="lm-stat"><strong>${lib.id === currentLibraryId ? '当前' : '可切换'}</strong><span>使用状态</span></div></div><div class="sg"><label>词库名称</label><input id="managerLibraryName" value="${escAttr(lib.name)}"></div><div class="lm-actions"><button class="primary" onclick="useManagerLibrary()">设为当前词库</button><button onclick="renameManagerLibrary()">保存名称</button>${builtIn ? '' : '<button class="danger" onclick="deleteManagerLibrary()">删除词库</button>'}</div><p class="lm-tip">普通词库保持原有用法：通过“查询/导入”直接加入单词并生成 AI 释义，背诵和测验只读取当前词库。</p></div>`;
+    return;
+  }
+  const pool = refreshPlannerPool(lib);
+  const sourceCount = lib.sourceWords.length;
+  const todayAdded = lib.words.filter(w => w.planAddedDate === today).length;
+  const loaded = lib.words.filter(w => w.status === 'loaded' && w.annotation).length;
+  panel.innerHTML = `
+    <div class="lm-card"><h3>规划词库设置</h3>
+      <div class="lm-stats four"><div class="lm-stat"><strong>${sourceCount}</strong><span>原始词总量</span></div><div class="lm-stat"><strong>${pool.length}</strong><span>待加入</span></div><div class="lm-stat"><strong>${lib.words.length}</strong><span>已加入词库</span></div><div class="lm-stat"><strong>${todayAdded}</strong><span>今日已添加</span></div></div>
+      <p class="lm-tip" style="margin:-4px 0 12px">AI 释义已完成 ${loaded}/${lib.words.length}</p>
+      <div class="sg"><label>词库名称</label><input id="managerLibraryName" value="${escAttr(lib.name)}"></div>
+      <div class="sg"><label>每日默认添加数量</label><input id="plannerDailyCount" type="number" min="1" max="500" value="${lib.plan.dailyCount}" onchange="savePlannerSettings()"></div>
+      <div class="sg"><label>取词顺序</label><select id="plannerOrderMode" onchange="savePlannerSettings()"><option value="sequential" ${lib.plan.orderMode === 'sequential' ? 'selected' : ''}>按导入顺序</option><option value="random" ${lib.plan.orderMode === 'random' ? 'selected' : ''}>随机抽取（不会重复）</option></select></div>
+      <div class="lm-actions"><button class="primary" onclick="useManagerLibrary()">设为当前词库</button><button onclick="renameManagerLibrary()">保存名称</button>${builtIn ? '' : '<button class="danger" onclick="deleteManagerLibrary()">删除词库</button>'}</div>
+    </div>
+    <div class="lm-card"><h3>导入待学习单词</h3><textarea id="plannerPoolInput" class="ia lm-raw" placeholder="粘贴数千个单词；支持换行、空格、逗号或分号分隔。这里只保存原始单词，不调用 AI。"></textarea><p class="lm-tip">导入时自动去重；已经加入当前词库的单词不会再次进入待学习列表。</p><div class="lm-actions" style="margin-top:10px"><button onclick="importPlannerPool()">导入原始词汇</button></div></div>
+    <div class="lm-card"><h3>原始词清单</h3><div class="lm-source-tools"><div class="sg"><label>搜索原始单词</label><input id="plannerSourceSearch" placeholder="输入单词筛选" oninput="plannerSourcePage=1;renderPlannerSourceList()"></div><div class="lm-actions"><button onclick="exportPlannerSourceWords()" ${sourceCount ? '' : 'disabled'}>⬇ 导出原始词汇 TXT</button></div></div><div id="plannerSourceList" class="lm-source-list"></div><div class="lm-actions" style="justify-content:space-between;margin-top:8px"><button id="plannerSourcePrev" onclick="changePlannerSourcePage(-1)">上一页</button><span id="plannerSourcePageInfo" class="lm-tip" style="margin:0"></span><button id="plannerSourceNext" onclick="changePlannerSourcePage(1)">下一页</button></div></div>
+    <div class="lm-card"><h3>添加今日词汇</h3><div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap"><div class="sg" style="margin:0;flex:1;min-width:140px"><label>本次添加数量</label><input id="plannerTakeCount" type="number" min="1" max="500" value="${Math.min(lib.plan.dailyCount, Math.max(1, pool.length))}"></div><div class="lm-actions"><button class="primary" onclick="addPlannerTodayWords()" ${pool.length ? '' : 'disabled'}>添加并生成 AI 释义</button></div></div><p class="lm-tip">选出的单词会加入这个词库，并直接复用普通导入的 AI 释义生成队列。之后可关闭窗口，在主界面查看进度并背诵。</p></div>`;
+  renderPlannerSourceList();
+}
+
+function selectManagerLibrary(id) { managerLibraryId = id; plannerSourcePage = 1; renderLibraryManager(); }
+
+function createLibraryFromManager(type) {
+  const label = type === 'planned' ? '规划词库' : '普通词库';
+  const input = document.getElementById('newLibraryName');
+  const name = input?.value.trim() || (type === 'planned' ? '雅思规划词库' : `词库${Math.max(1, libraries.length)}`);
+  if (!name || !name.trim()) return;
+  syncCurrentLibraryWords();
+  const lib = { id:gid(), name:name.trim(), type, words:[] };
+  if (type === 'planned') { lib.pool = []; lib.sourceWords = []; lib.plan = { dailyCount:50, orderMode:'sequential', sourceCount:0 }; }
+  libraries.push(lib); managerLibraryId = lib.id; currentLibraryId = lib.id; words = lib.words;
+  if (input) input.value = '';
+  selected.clear(); markDirty(); renderLibrarySelects(); renderWords(); renderLibraryManager();
+  toast(`已创建并切换到「${lib.name}」`);
+}
+
+function renameManagerLibrary() {
+  const lib = getManagerLibrary();
+  const name = document.getElementById('managerLibraryName')?.value.trim();
+  if (!name || !name.trim()) return;
+  lib.name = name.trim(); markDirty(); renderLibrarySelects(); renderWords(); renderLibraryManager();
+}
+
+function deleteManagerLibrary() {
+  const lib = getManagerLibrary();
+  if (lib.id === 'default' || lib.id === 'notes') return toast('默认词库和笔记词库不能删除');
+  const poolCount = lib.type === 'planned' ? (lib.pool || []).length : 0;
+  if (!confirm(`确定删除「${lib.name}」吗？\n将删除 ${lib.words.length} 个已加入词条${poolCount ? `和 ${poolCount} 个待学习单词` : ''}。`)) return;
+  libraries = libraries.filter(item => item.id !== lib.id);
+  if (config.noteLibraryId === lib.id) config.noteLibraryId = 'notes';
+  if (currentLibraryId === lib.id) { currentLibraryId = 'default'; words = getCurrentLibrary().words; selected.clear(); }
+  managerLibraryId = currentLibraryId; markDirty(); renderLibrarySelects(); renderWords(); renderLibraryManager();
+}
+
+function useManagerLibrary() {
+  const lib = getManagerLibrary();
+  switchLibrary(lib.id); managerLibraryId = lib.id; renderLibraryManager();
+}
+
+function savePlannerSettings() {
+  const lib = getManagerLibrary(); if (lib.type !== 'planned') return;
+  lib.plan.dailyCount = Math.max(1, Math.min(500, parseInt(document.getElementById('plannerDailyCount').value, 10) || 1));
+  lib.plan.orderMode = document.getElementById('plannerOrderMode').value === 'random' ? 'random' : 'sequential';
+  markDirty(); renderLibraryManager();
+}
+
+function parsePlannerWords(text) {
+  return String(text || '').split(/[\s,，;；]+/).map(word => word.trim()).filter(Boolean);
+}
+
+function renderPlannerSourceList() {
+  const lib = getManagerLibrary();
+  const box = document.getElementById('plannerSourceList');
+  if (!box || lib.type !== 'planned') return;
+  refreshPlannerPool(lib);
+  const q = (document.getElementById('plannerSourceSearch')?.value || '').trim().toLowerCase();
+  const all = [...lib.sourceWords].sort((a,b) => a.order - b.order);
+  const filtered = q ? all.filter(item => item.word.toLowerCase().includes(q)) : all;
+  const pages = Math.max(1, Math.ceil(filtered.length / PLANNER_SOURCE_PAGE_SIZE));
+  plannerSourcePage = Math.max(1, Math.min(plannerSourcePage, pages));
+  const start = (plannerSourcePage - 1) * PLANNER_SOURCE_PAGE_SIZE;
+  const pageItems = filtered.slice(start, start + PLANNER_SOURCE_PAGE_SIZE);
+  box.innerHTML = pageItems.length ? pageItems.map((item, index) => `<div class="lm-source-row"><span class="lm-source-no">${start + index + 1}</span><span class="lm-source-word">${esc(item.word)}</span><span class="lm-source-status ${item.activeWordId ? 'added' : ''}">${item.activeWordId ? '已加入' : '待加入'}</span></div>`).join('') : '<div class="lm-tip" style="padding:14px;text-align:center">没有匹配的原始单词</div>';
+  const info = document.getElementById('plannerSourcePageInfo');
+  if (info) info.textContent = `第 ${plannerSourcePage}/${pages} 页 · 共 ${filtered.length} 个`;
+  const prev = document.getElementById('plannerSourcePrev'), next = document.getElementById('plannerSourceNext');
+  if (prev) prev.disabled = plannerSourcePage <= 1;
+  if (next) next.disabled = plannerSourcePage >= pages;
+}
+
+function changePlannerSourcePage(delta) { plannerSourcePage += delta; renderPlannerSourceList(); }
+
+function exportPlannerSourceWords() {
+  const lib = getManagerLibrary(); if (lib.type !== 'planned') return;
+  const list = [...(lib.sourceWords || [])].sort((a,b) => a.order - b.order);
+  if (!list.length) return toast('没有可导出的原始单词');
+  const text = '\uFEFF' + list.map(item => item.word).join('\r\n');
+  const blob = new Blob([text], { type:'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = `${String(lib.name || '规划词库').replace(/[\\/:*?"<>|]+/g, '_')}_原始词汇.txt`; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast(`已导出 ${list.length} 个原始单词`);
+}
+
+function importPlannerPool() {
+  const lib = getManagerLibrary(); if (lib.type !== 'planned') return;
+  refreshPlannerPool(lib);
+  const input = document.getElementById('plannerPoolInput');
+  const items = parsePlannerWords(input.value); if (!items.length) return toast('请先输入单词');
+  const used = new Set(lib.sourceWords.map(item => item.word.toLowerCase()));
+  let added = 0, skipped = 0;
+  let nextOrder = lib.sourceWords.reduce((max, item) => Math.max(max, Number(item.order) || 0), -1) + 1;
+  items.forEach(word => {
+    const key = word.toLowerCase(); if (used.has(key)) { skipped++; return; }
+    used.add(key); const source = { id:gid(), word, order:nextOrder++, activeWordId:'' };
+    lib.sourceWords.push(source); lib.pool.push({ id:source.id, word:source.word, order:source.order }); added++;
+  });
+  lib.plan.sourceCount = lib.sourceWords.length;
+  input.value = ''; if (added) markDirty(); renderLibraryManager();
+  toast(`已导入 ${added} 个待学习单词${skipped ? `，跳过 ${skipped} 个重复项` : ''}`);
+}
+
+function addPlannerTodayWords() {
+  const lib = getManagerLibrary(); if (lib.type !== 'planned') return;
+  refreshPlannerPool(lib);
+  const count = Math.max(1, Math.min(500, parseInt(document.getElementById('plannerTakeCount').value, 10) || lib.plan.dailyCount));
+  const available = [...(lib.pool || [])]; if (!available.length) return toast('待学习词库已经为空');
+  if (lib.plan.orderMode === 'random') {
+    for (let i = available.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [available[i], available[j]] = [available[j], available[i]]; }
+  } else available.sort((a,b) => a.order - b.order);
+  const picked = available.slice(0, Math.min(count, available.length));
+  const pickedIds = new Set(picked.map(item => item.id));
+  lib.pool = lib.pool.filter(item => !pickedIds.has(item.id));
+  const today = localDateKey();
+  const entries = picked.map(item => {
+    const entry = createWordEntry(item.word, { planAddedDate:today, planSourceOrder:item.order, planSourceId:item.id });
+    const source = lib.sourceWords.find(sourceItem => sourceItem.id === item.id); if (source) source.activeWordId = entry.id;
+    return entry;
+  });
+  lib.words.push(...entries); markDirty();
+  if (lib.id === currentLibraryId) { words = lib.words; renderWords(); }
+  queueWordAnnotation(entries, lib);
+  renderLibrarySelects(); renderLibraryManager();
+  toast(`已添加 ${entries.length} 个今日词汇并进入 AI 生成队列`);
 }
 
 function loadEmbedded() {
@@ -1624,6 +1912,24 @@ function renderStreamCard(word, annotation) {
   return `<div class="sq-card" data-word="${e(word)}"><div class="sq-word">${e(word)} <button class="speak-direct-btn" data-speak-word="${e(word)}" data-speak-type="2" style="font-size:calc(.75rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🔊</button></div><div class="sq-row"><span class="sq-phonetic">${e(annotation.phonetic)}</span><span class="sq-pos">${e(annotation.pos)}</span></div><div class="sq-row"><span class="sq-label">释义</span><span class="sq-val">${e(annotation.meaning)}</span></div><div class="sq-row"><span class="sq-label">短语</span><span class="sq-val">${e(annotation.phrases)}</span></div><div class="sq-row"><span class="sq-label">变形</span><span class="sq-val">${e(annotation.inflections)}</span></div><div class="sq-section"><div class="sq-row"><span class="sq-label">例句</span><span class="sq-val">${e(annotation.examples).replace(/\n/g,'<br>')}</span></div></div><div class="sq-section"><div class="sq-row"><span class="sq-label">助记</span><span class="sq-val">${e(annotation.mnemonics)}</span></div></div></div>`;
 }
 
+function createWordEntry(word, extra = {}) {
+  return { id:gid(), word, date:localDateKey(), stars:0, annotation:null, status:'loading', showAnno:false, wrongCount:0, note:'', ...createReviewState(), ...extra };
+}
+
+function queueWordAnnotation(entries, library = getCurrentLibrary()) {
+  const tasks = entries.map(entry => ({
+    id:gid(), word:entry.word, type:'import', entry,
+    fn: async () => {
+      try { entry.annotation = await callAI(entry.word); entry.status = 'loaded'; log(`✅ 导入成功: ${entry.word}`); }
+      catch(e) { entry.status = 'error'; log(`❌ 导入失败 [${entry.word}]: ${e.message}`); }
+      markDirty();
+      if (library.id === currentLibraryId) renderWords();
+    }
+  }));
+  TaskManager.add(tasks);
+  return tasks;
+}
+
 function doQuery() {
   const items = getInputWords(); if (!items.length) return;
   const area = document.getElementById('streamArea'); const box = document.getElementById('streamBox'); area.style.display = 'block';
@@ -1664,13 +1970,8 @@ function doImportWords() {
   if (updatedDup) { markDirty(); renderWords(); log(`更新了 ${updatedDup} 个重复词日期`); }
   if (!unique.length) { document.getElementById('importText').value = ''; toast(`已更新 ${updatedDup} 个重复词日期`); return; }
   document.getElementById('importText').value = '';
-  const entries = unique.map(w => { const entry = { id:gid(), word:w, date:today, stars:0, annotation:null, status:'loading', showAnno:false, wrongCount:0, note:'', ...createReviewState() }; words.push(entry); return entry; }); markDirty(); renderWords();
-  const tasks = entries.map(entry => ({
-    id: gid(), word: entry.word, type: 'import', entry, fn: async () => {
-      try { entry.annotation = await callAI(entry.word); entry.status = 'loaded'; log(`✅ 导入成功: ${entry.word}`); } catch(e) { entry.status = 'error'; log(`❌ 导入失败 [${entry.word}]: ${e.message}`); } markDirty(); renderWords();
-    }
-  }));
-  TaskManager.add(tasks); toast(`已排队导入 ${unique.length} 个` + (updatedDup ? `，更新 ${updatedDup} 个重复词日期` : '')); setTimeout(()=>closeModal('importModal'), 400);
+  const entries = unique.map(w => { const entry = createWordEntry(w, { date:today }); words.push(entry); return entry; }); markDirty(); renderWords();
+  queueWordAnnotation(entries, getCurrentLibrary()); toast(`已排队导入 ${unique.length} 个` + (updatedDup ? `，更新 ${updatedDup} 个重复词日期` : '')); setTimeout(()=>closeModal('importModal'), 400);
 }
 
 // ==== 段落解析相关 ====
@@ -2251,16 +2552,12 @@ function importSingleWord(w, targetLibraryId, noteText = '') {
     return toast(`「${w}」已存在于「${lib.name}」，已更新日期${noteText ? '和笔记' : ''}`);
   }
 
-  const entry = { id:gid(), word:w, date:today, stars:0, annotation:null, status:'loading', showAnno:false, wrongCount:0, note:noteText, ...createReviewState() };
+  const entry = createWordEntry(w, { date:today, note:noteText });
   list.push(entry);
   markDirty();
   if (lib.id === currentLibraryId) { words = list; renderWords(); }
   
-  TaskManager.add([{
-      id: gid(), word: w, type: 'import', entry, fn: async () => {
-      try { entry.annotation = await callAI(entry.word); entry.status = 'loaded'; log(`✅ 导入成功: ${entry.word}`); } catch(e) { entry.status = 'error'; log(`❌ 导入失败 [${entry.word}]: ${e.message}`); } markDirty(); if (lib.id === currentLibraryId) renderWords();
-      }
-  }]);
+  queueWordAnnotation([entry], lib);
   toast(`「${w}」已加入「${lib.name}」导入队列`);
 }
 
@@ -2576,11 +2873,11 @@ function toggleDateSelect(date, event) {
 
 function selectAllVisible() { getSorted().forEach(w => selected.add(w.id)); updateSelBar(); renderWords(); }
 function deselectAll() { selected.clear(); lastClickedId = null; rangeState = 0; document.getElementById('btnRange').textContent = '🔗 区间连选 (关)'; updateSelBar(); renderWords(); }
-function deleteSelected() { const n = selected.size; if (!n || !confirm(`确定删除 ${n} 个单词？`)) return; words = words.filter(w => !selected.has(w.id)); selected.clear(); markDirty(); updateSelBar(); renderWords(); toast(`已删除 ${n} 个`); log(`批量删除了 ${n} 个单词`); }
+function deleteSelected() { const n = selected.size; if (!n || !confirm(`确定删除 ${n} 个单词？`)) return; words = words.filter(w => !selected.has(w.id)); selected.clear(); syncCurrentLibraryWords(); refreshPlannerPool(getCurrentLibrary()); markDirty(); updateSelBar(); renderWords(); toast(`已删除 ${n} 个`); log(`批量删除了 ${n} 个单词`); }
 function updateSelBar() { document.getElementById('selCount').textContent = `已选 ${selected.size} 个`; document.querySelector('.run-btn').textContent = `▶️ 开始测验 (${selected.size})`; }
 
 function setStar(id,r,event) { event.stopPropagation(); const e=words.find(w=>w.id===id); if(!e) return; e.stars = e.stars===r ? 0 : r; markDirty(); renderWords(); }
-function delWord(id) { const e=words.find(w=>w.id===id); if(!e || !confirm(`删除「${e.word}」？`)) return; words=words.filter(w=>w.id!==id); markDirty(); renderWords(); log(`删除了单词: ${e.word}`); }
+function delWord(id) { const e=words.find(w=>w.id===id); if(!e || !confirm(`删除「${e.word}」？`)) return; words=words.filter(w=>w.id!==id); syncCurrentLibraryWords(); refreshPlannerPool(getCurrentLibrary()); markDirty(); renderWords(); log(`删除了单词: ${e.word}`); }
 
 function toggleAnno(id) { 
     const e = words.find(w => w.id === id); if(!e) return; 
@@ -3012,7 +3309,14 @@ function prepareJsonImport(data) {
     const libraries = data.libraries.filter(src => src && typeof src === 'object').map((src, index) => {
       const clean = sanitizeImportedWordList(src.words);
       rejected += clean.rejected;
-      return { id:normalizeLibraryId(src.id || gid()), name:String(src.name || `导入词库${index + 1}`).trim(), words:clean.words };
+      const type = src.type === 'planned' ? 'planned' : 'normal';
+      return {
+        id:normalizeLibraryId(src.id || gid()),
+        name:String(src.name || `导入词库${index + 1}`).trim(),
+        type,
+        words:clean.words,
+        ...(type === 'planned' ? { pool:Array.isArray(src.pool) ? src.pool : [], sourceWords:Array.isArray(src.sourceWords) ? src.sourceWords : [], plan:src.plan || {} } : {})
+      };
     });
     if (!libraries.length) throw new Error('没有有效词库');
     return { libraries, words:null, rejected, total:libraries.reduce((n, lib) => n + lib.words.length, 0) };
@@ -3044,7 +3348,8 @@ function handleJsonImport(e) {
         if (importLibs) {
           importLibs.forEach(src => {
             let lib = libraries.find(x => x.id === src.id) || libraries.find(x => x.name === src.name);
-            if (!lib) { lib = { id: normalizeLibraryId(src.id || gid()), name: src.name || '导入词库', words: [] }; libraries.push(lib); }
+            if (!lib) { lib = { ...src, id: normalizeLibraryId(src.id || gid()), name: src.name || '导入词库', words: [] }; libraries.push(lib); }
+            if (src.type === 'planned') { lib.type = 'planned'; lib.pool = Array.isArray(src.pool) ? src.pool : (lib.pool || []); lib.sourceWords = Array.isArray(src.sourceWords) ? src.sourceWords : (lib.sourceWords || []); lib.plan = src.plan || lib.plan || {}; }
             const stats = mergeWordLists(lib.words, src.words);
             mergeStats.added += stats.added; mergeStats.updated += stats.updated; mergeStats.skipped += stats.skipped;
           });
@@ -3127,6 +3432,7 @@ function closeModal(id) {
 }
 function gid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
 function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function escAttr(s) { return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 function fmtNow() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; }
 function updateClock() { document.getElementById('currentTime').textContent = fmtNow(); }
 function toast(msg) { document.querySelectorAll('.toast').forEach(t=>t.remove()); const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2500); }
