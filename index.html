@@ -132,9 +132,9 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 .tk-type.retry{background:#fff3e0;color:#e65100}
 
 @media(max-width:600px){
-.hd{padding:10px 14px}.hd h1{font-size:1rem}.hd-acts button{padding:calc(6px * var(--us)) calc(8px * var(--us));font-size:calc(.75rem * var(--us))}
-.tb{padding:8px 14px;top:46px}.tb-in{gap:6px}.wl{padding:8px 14px 80px}
-.wcd{padding:10px 12px}.wn{font-size:1.05rem}.ws span.st{font-size:1.05rem}
+.hd{padding:10px 14px}.hd-in{align-items:flex-start;flex-direction:column;gap:8px}.hd h1{font-size:1rem;white-space:nowrap}.hd-acts{width:100%}.hd-acts button{padding:calc(6px * var(--us)) calc(8px * var(--us));font-size:calc(.75rem * var(--us))}
+.tb{padding:8px 14px;position:static}.tb-in{gap:6px}.wl{padding:8px 14px 80px}
+.wcd{padding:10px 12px}.wt{flex-wrap:wrap;gap:7px}.wn{font-size:1.05rem;flex:1 1 calc(100% - 100px);overflow-wrap:anywhere}.wa{margin-left:auto}.ws{order:3;width:100%;margin-left:0;flex-wrap:wrap}.ws span.st{font-size:1.05rem}
 .md{border-radius:10px}.mb{padding:16px}.ar{gap:4px 10px}.wc{padding:0 14px}
 }
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:#aaa}
@@ -597,7 +597,11 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
         <label style="margin:0">拼对或拼错后自动发音</label>
         <label style="position:relative;display:inline-block;width:44px;height:24px;margin:0"><input type="checkbox" id="cfgRAnsPronounce" style="opacity:0;width:0;height:0" onchange="syncUI('cfgRAnsPronounce','rapTrack','rapKnob')"><span id="rapTrack" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span><span id="rapKnob" style="position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.3s"></span></label>
       </div>
-      <div class="sg"><label>拼错后的记忆周期惩罚</label><select id="cfgRPunish"><option value="stagnate">停滞 (当前等级不变，明天强制复习)</option><option value="downgrade">降级 (退回上一周期级别)</option><option value="reset">重置严苛 (直接退回L0新词状态)</option></select></div>
+      <div class="sg" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <label style="margin:0">测验结束后自动上传云端</label>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;margin:0"><input type="checkbox" id="cfgRAutoCloud" style="opacity:0;width:0;height:0" onchange="syncUI('cfgRAutoCloud','racTrack','racKnob')"><span id="racTrack" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span><span id="racKnob" style="position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.3s"></span></label>
+      </div>
+      <div class="sg"><label>拼错后的记忆周期惩罚</label><select id="cfgRPunish"><option value="stagnate">停滞 (等级不变，24小时后复习)</option><option value="downgrade">降级 (退回一级，24小时后复习)</option><option value="reset">重置严苛 (退回L0并立即待背)</option></select></div>
       
       <div class="sg" style="margin-top:20px; border-top:1px dashed var(--border); padding-top:14px">
         <label>拼写完成后显示的答案内容 (自由搭配)</label>
@@ -708,7 +712,9 @@ var DEFAULT_F_PROMPT = `用户正在阅读英语句子："{sent}"。\n用户的�
 var DEFAULT_W_PROMPT = `你是大学英语六级考试（CET-6）的资深阅卷老师。请根据用户选择的批改类型，对用户的答案进行严格、具体、可操作的中文批改。\n\n批改类型：{mode}\n题目：{topic}\n用户答案：{answer}\n\n如果批改类型是“作文”：\n请按以下格式输出：\n【总评与分数】\n分数：（按六级写作标准给出百分制分数，并简述理由）\n总体评价：（内容、结构、语言、词汇、语法）\n\n【逐句批改】\n1. 我的原句：（摘录用户原句）\n   问题：（指出语法、搭配、逻辑、表达或中式英语问题）\n   推荐表达：（给出更自然、更符合六级作文的英文表达）\n   说明：（简短解释为什么这样改）\n\n【提升建议】\n（给出2-4条具体建议）\n\n如果批改类型是“翻译”：\n请按以下格式输出：\n【总评与分数】\n分数：（按六级翻译标准给出百分制分数，并简述理由）\n总体评价：（准确性、完整性、语法和表达）\n\n【逐句批改】\n1. 原题句：（根据题目拆分出的中文句子或意群）\n   我的表达：（对应的用户译文）\n   问题：（逐句指出错译、漏译、搭配、语法或表达问题）\n   推荐译文：（给出更准确自然的六级翻译表达）\n\n【标准翻译答案】\n（给出一版完整、自然、符合六级水平的英文译文）\n\n请直接输出批改内容，不要使用表格，不要使用复杂Markdown标题。`;
 
 // L0=0天(当日), L1=1天后, L2=2天后...
-var EB_DAYS = [0, 1, 2, 4, 7, 15, 30, 999]; 
+var EB_DAYS = [0, 1, 2, 4, 7, 15, 30, 999];
+var DATA_SCHEMA_VERSION = 2;
+var REVIEW_DAY_MS = 24 * 60 * 60 * 1000;
 
 var words = [];
 var libraries = [];
@@ -737,6 +743,17 @@ var currentWordPopupId = 0;
 var lastWordPopupTime = 0; // 防抖时间锁
 var LOCAL_CACHE_KEY = 'vocab_local_cache_v1';
 var currentFuSent = '';
+var localRevision = 0;
+var localSaveFailed = false;
+var cloudDirty = false;
+var cloudUploadPromise = null;
+var cloudUploadPending = false;
+var cloudUploadInProgress = false;
+var testSessionChanged = false;
+var paraAbortController = null;
+var fuAbortController = null;
+var writingAbortController = null;
+var wordPopupAbortController = null;
 
 // 统一过滤状态
 var fState = { today: false, wrong: false, none: false, stMin: 0, stMax: 5, ebMin: 0, ebMax: 7 };
@@ -753,9 +770,9 @@ function normalizeLibraryId(id) {
 function normalizeLibraries(sourceWords) {
   let list = Array.isArray(libraries) ? libraries : [];
   if (!list.length) list = [{ id: 'default', name: '默认词库', words: Array.isArray(sourceWords) ? sourceWords : [] }];
-  list = list.map((lib, idx) => ({
+  list = list.filter(lib => lib && typeof lib === 'object').map((lib, idx) => ({
     id: normalizeLibraryId(lib.id || (idx === 0 ? 'default' : gid())),
-    name: (lib.name || (idx === 0 ? '默认词库' : `词库${idx + 1}`)).trim(),
+    name: String(lib.name || (idx === 0 ? '默认词库' : `词库${idx + 1}`)).trim(),
     words: Array.isArray(lib.words) ? lib.words : []
   }));
   if (!list.some(lib => lib.id === 'default')) list.unshift({ id: 'default', name: '默认词库', words: Array.isArray(sourceWords) ? sourceWords : [] });
@@ -804,6 +821,7 @@ function switchLibrary(id) {
   renderLibrarySelects();
   renderWords();
   updateSelBar();
+  saveLocalCache();
   toast(`已切换到「${getCurrentLibrary().name}」`);
 }
 
@@ -869,6 +887,7 @@ function loadEmbedded() {
       recitePronounce: d.config?.recitePronounce || "1", reciteHint: d.config?.reciteHint !== false, recitePunish: d.config?.recitePunish || "stagnate",
       reciteRemoveWrong: d.config?.reciteRemoveWrong !== false, reciteHintPct: d.config?.reciteHintPct !== undefined ? d.config.reciteHintPct : 50,
       reciteForceRewrite: d.config?.reciteForceRewrite !== false, recitePronounceAns: d.config?.recitePronounceAns !== false, globalMemo: d.config?.globalMemo || "",
+      autoCloudSyncAfterTest: d.config?.autoCloudSyncAfterTest !== false,
       uiSize: d.config?.uiSize || 'm',
       showBadgeStar: d.config?.showBadgeStar !== false,
       showBadgeLevel: d.config?.showBadgeLevel !== false,
@@ -908,10 +927,123 @@ function normalizeWords() {
 
 function normalizeWordList(list) {
   if (!Array.isArray(list)) return;
-  list.forEach(w => {
-    if (w.wrongCount === undefined) w.wrongCount = 0;
-    if (w.note === undefined) w.note = "";
+  const usedIds = new Set();
+  const normalized = [];
+  list.forEach(raw => {
+    if (!raw || typeof raw !== 'object') return;
+    const word = typeof raw.word === 'string' ? raw.word.trim() : '';
+    if (!word) return;
+    const w = { ...raw, word };
+    let id = String(w.id || '');
+    if (!/^[A-Za-z0-9_-]+$/.test(id) || usedIds.has(id)) id = gid();
+    usedIds.add(id);
+    w.id = id;
+    w.date = isValidDateKey(w.date) ? w.date : localDateKey();
+    w.stars = Math.max(0, Math.min(5, parseInt(w.stars, 10) || 0));
+    w.wrongCount = Math.max(0, parseInt(w.wrongCount, 10) || 0);
+    w.note = typeof w.note === 'string' ? w.note : '';
+    w.showAnno = !!w.showAnno;
+    if (w.annotation && typeof w.annotation === 'object') {
+      w.annotation = normalizeAnnotation(w.annotation);
+      w.status = 'loaded';
+    } else {
+      w.annotation = null;
+      w.status = 'error';
+    }
+    normalizeReviewState(w);
+    normalized.push(w);
   });
+  list.splice(0, list.length, ...normalized);
+}
+
+function isValidDateKey(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return false;
+  const ms = new Date(value + 'T00:00:00').getTime();
+  return Number.isFinite(ms) && localDateKey(ms) === value;
+}
+
+function normalizeAnnotation(value) {
+  const a = value && typeof value === 'object' ? value : {};
+  const str = key => typeof a[key] === 'string' ? a[key] : '';
+  return { phonetic:str('phonetic'), pos:str('pos'), meaning:str('meaning'), phrases:str('phrases'), inflections:str('inflections'), examples:str('examples'), mnemonics:str('mnemonics') };
+}
+
+function localDateKey(value = Date.now()) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function validTimeMs(value) {
+  if (!value) return NaN;
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
+function legacyReviewDateMs(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return NaN;
+  const ms = new Date(value + 'T00:00:00').getTime();
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
+function normalizeReviewState(w) {
+  const hasCycle = w.ebLevel !== undefined && w.ebLevel !== null && w.ebLevel !== -1;
+  if (!hasCycle) return;
+  w.ebLevel = Math.max(0, Math.min(7, parseInt(w.ebLevel, 10) || 0));
+  if (w.ebLevel >= 7) {
+    w.nextReviewAt = null;
+    w.nextReviewDate = '2099-12-31';
+  } else {
+    let nextMs = validTimeMs(w.nextReviewAt);
+    if (!Number.isFinite(nextMs)) nextMs = legacyReviewDateMs(w.nextReviewDate);
+    if (!Number.isFinite(nextMs)) nextMs = 0;
+    w.nextReviewAt = new Date(nextMs).toISOString();
+    w.nextReviewDate = localDateKey(nextMs);
+  }
+  const lastMs = validTimeMs(w.lastReviewedAt);
+  if (w.lastReviewedAt && Number.isFinite(lastMs)) w.lastReviewedAt = new Date(lastMs).toISOString();
+  else if (w.lastReviewedAt) w.lastReviewedAt = null;
+  const updatedMs = validTimeMs(w.reviewUpdatedAt);
+  if (w.reviewUpdatedAt && Number.isFinite(updatedMs)) w.reviewUpdatedAt = new Date(updatedMs).toISOString();
+  else if (w.reviewUpdatedAt) w.reviewUpdatedAt = null;
+}
+
+function getNextReviewMs(w) {
+  if (!w || w.ebLevel === undefined || w.ebLevel === null || w.ebLevel === -1) return NaN;
+  if (w.ebLevel >= 7) return Infinity;
+  const exactMs = validTimeMs(w.nextReviewAt);
+  if (Number.isFinite(exactMs)) return exactMs;
+  const legacyMs = legacyReviewDateMs(w.nextReviewDate);
+  return Number.isFinite(legacyMs) ? legacyMs : 0;
+}
+
+function isReviewDue(w, nowMs = Date.now()) {
+  const nextMs = getNextReviewMs(w);
+  return Number.isFinite(nextMs) && nextMs <= nowMs && w.ebLevel < 7;
+}
+
+function setReviewSchedule(w, level, baseMs = Date.now(), delayDays = EB_DAYS[level], markReviewed = true) {
+  const safeBaseMs = Number.isFinite(baseMs) ? baseMs : Date.now();
+  const safeLevel = Math.max(0, Math.min(7, parseInt(level, 10) || 0));
+  const changedAt = new Date(safeBaseMs).toISOString();
+  w.ebLevel = safeLevel;
+  if (markReviewed) w.lastReviewedAt = changedAt;
+  w.reviewUpdatedAt = changedAt;
+  w.updatedAt = changedAt;
+  if (safeLevel >= 7) {
+    w.nextReviewAt = null;
+    w.nextReviewDate = '2099-12-31';
+    return;
+  }
+  const days = Number.isFinite(delayDays) ? Math.max(0, delayDays) : 0;
+  const nextMs = safeBaseMs + days * REVIEW_DAY_MS;
+  w.nextReviewAt = new Date(nextMs).toISOString();
+  w.nextReviewDate = localDateKey(nextMs);
+}
+
+function createReviewState(baseMs = Date.now()) {
+  const createdAt = new Date(baseMs).toISOString();
+  return { ebLevel: 0, nextReviewAt: createdAt, nextReviewDate: localDateKey(baseMs), lastReviewedAt: null, reviewUpdatedAt: createdAt, updatedAt: createdAt };
 }
 
 function ensureConfigDefaults() {
@@ -919,6 +1051,7 @@ function ensureConfigDefaults() {
   config.parseApiKey = config.parseApiKey || config.qApiKey || '';
   config.parseModelId = config.parseModelId || config.qModelId || '';
   config.wPrompt = config.wPrompt || DEFAULT_W_PROMPT;
+  if (config.autoCloudSyncAfterTest === undefined) config.autoCloudSyncAfterTest = true;
   if (!config.noteLibraryId || !libraries.some(lib => lib.id === config.noteLibraryId)) config.noteLibraryId = 'notes';
 }
 
@@ -931,10 +1064,19 @@ function parseSavedAt(value) {
 function saveLocalCache() {
   try {
     syncCurrentLibraryWords();
-    const data = { words, libraries, currentLibraryId, config: getSafeConfig(), lastSaveTime, localSavedAt: Date.now() };
+    const data = { schemaVersion: DATA_SCHEMA_VERSION, words, libraries, currentLibraryId, config: getSafeConfig(), lastSaveTime, localSavedAt: Date.now(), localRevision, cloudDirty };
     localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(data));
+    if (localSaveFailed) toast('✅ 本地保存已恢复');
+    localSaveFailed = false;
+    return true;
   } catch(e) {
     console.warn('[Vocab] 本地缓存写入失败:', e);
+    if (!localSaveFailed) {
+      toast('❌ 本地保存失败，请立即导出 JSON 备份');
+      log('本地保存失败: ' + (e.message || e));
+    }
+    localSaveFailed = true;
+    return false;
   }
 }
 
@@ -948,8 +1090,9 @@ function loadLocalCache() {
     const cachedDataStamp = parseSavedAt(cached.lastSaveTime);
     const cacheStamp = cached.localSavedAt || cachedDataStamp;
     const embeddedStamp = parseSavedAt(lastSaveTime);
-    if(words.length && embeddedStamp && cachedDataStamp && cachedDataStamp < embeddedStamp) return;
-    if(words.length && embeddedStamp && cacheStamp < embeddedStamp) return;
+    const hasEmbeddedData = words.length > 0 || libraries.some(lib => Array.isArray(lib.words) && lib.words.length > 0);
+    if(hasEmbeddedData && embeddedStamp && cachedDataStamp && cachedDataStamp < embeddedStamp) return;
+    if(hasEmbeddedData && embeddedStamp && cacheStamp < embeddedStamp) return;
 
     const secrets = {
       apiKey: config.apiKey || '',
@@ -963,6 +1106,8 @@ function loadLocalCache() {
     currentLibraryId = cached.currentLibraryId || currentLibraryId || 'default';
     words = Array.isArray(cached.words) ? cached.words : [];
     if(cached.config) config = { ...config, ...cached.config, ...secrets };
+    localRevision = Math.max(0, parseInt(cached.localRevision, 10) || 0);
+    cloudDirty = !!cached.cloudDirty;
     normalizeLibraries(words);
     normalizeWords();
     ensureConfigDefaults();
@@ -973,12 +1118,6 @@ function loadLocalCache() {
   } catch(e) {
     log('读取本地缓存失败: ' + e.message);
   }
-}
-
-function calcNextDate(level) {
-  if (level >= EB_DAYS.length - 1) return '2099-12-31';
-  const d = new Date(); d.setDate(d.getDate() + EB_DAYS[level]);
-  return d.toISOString().slice(0,10);
 }
 
 // =====================================================
@@ -1098,12 +1237,16 @@ function getSafeConfig() {
   return sc;
 }
 
+function getDataSnapshot(saveTime = lastSaveTime) {
+  syncCurrentLibraryWords();
+  return { schemaVersion: DATA_SCHEMA_VERSION, revision: localRevision, words, libraries, currentLibraryId, config: getSafeConfig(), lastSaveTime: saveTime };
+}
+
 // =====================================================
 // CLOUD SYNC & FILE I/O (GITHUB GIST)
 // =====================================================
-function getFullHTML() {
-  syncCurrentLibraryWords();
-  const data = JSON.stringify({ words, libraries, currentLibraryId, config: getSafeConfig(), lastSaveTime }); const html = document.documentElement.outerHTML;
+function getFullHTML(saveTime = lastSaveTime) {
+  const data = JSON.stringify(getDataSnapshot(saveTime)); const html = document.documentElement.outerHTML;
   const re = /(<script id="embedded-data" type="application\/json">)([\s\S]*?)(<\/script>)/;
   // 使用回调函数返回，彻底阻断内容中带有 $n 的符号对正则替换的破坏
   return '<!DOCTYPE html>\n<html lang="zh-CN">' + html.slice(html.indexOf('<head>')).replace(re, function(match, p1, p2, p3) { 
@@ -1112,20 +1255,20 @@ function getFullHTML() {
 }
 function getTimestamp() { const d = new Date(); return `${d.getFullYear()%100}_${d.getMonth()+1}_${d.getDate()}_${d.getHours()}_${String(d.getMinutes()).padStart(2,'0')}`; }
 async function saveFile() {
-  lastSaveTime = fmtNow(); const fullHtml = getFullHTML(); const useTs = config.timestamp;
+  const saveTime = fmtNow(); const fullHtml = getFullHTML(saveTime); const useTs = config.timestamp;
   if (useTs) {
     const tsName = `词汇学习助手_${getTimestamp()}.html`;
-    if (window.showSaveFilePicker) { try { const handle = await window.showSaveFilePicker({ suggestedName: tsName, types: [{ description: 'HTML', accept: { 'text/html': ['.html'] } }] }); const writable = await handle.createWritable(); await writable.write(fullHtml); await writable.close(); markClean(); toast('✅ 已另存为'); log(`另存为: ${tsName}`); return; } catch (e) { if (e.name === 'AbortError') return; } }
-    dlFile(fullHtml, tsName);
+    if (window.showSaveFilePicker) { try { const handle = await window.showSaveFilePicker({ suggestedName: tsName, types: [{ description: 'HTML', accept: { 'text/html': ['.html'] } }] }); const writable = await handle.createWritable(); await writable.write(fullHtml); await writable.close(); lastSaveTime = saveTime; markClean(); toast('✅ 已另存为'); log(`另存为: ${tsName}`); return; } catch (e) { if (e.name === 'AbortError') return; } }
+    dlFile(fullHtml, tsName, saveTime);
   } else {
-    if (window.showSaveFilePicker) { try { if (!fileHandle) fileHandle = await window.showSaveFilePicker({ suggestedName: '词汇学习助手.html', types: [{ description: 'HTML', accept: { 'text/html': ['.html'] } }] }); const writable = await fileHandle.createWritable(); await writable.write(fullHtml); await writable.close(); markClean(); toast('✅ 已保存'); log('文件已覆盖保存'); return; } catch (e) { if (e.name === 'AbortError') return; } }
-    dlFile(fullHtml, '词汇学习助手.html');
+    if (window.showSaveFilePicker) { try { if (!fileHandle) fileHandle = await window.showSaveFilePicker({ suggestedName: '词汇学习助手.html', types: [{ description: 'HTML', accept: { 'text/html': ['.html'] } }] }); const writable = await fileHandle.createWritable(); await writable.write(fullHtml); await writable.close(); lastSaveTime = saveTime; markClean(); toast('✅ 已保存'); log('文件已覆盖保存'); return; } catch (e) { if (e.name === 'AbortError') return; } }
+    dlFile(fullHtml, '词汇学习助手.html', saveTime);
   }
 }
-function dlFile(content, name) { const blob = new Blob([content], { type: 'text/html;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url); markClean(); toast('✅ 已下载'); log(`下载: ${name}`); }
-function markDirty() { dirty = true; saveLocalCache(); renderLibrarySelects(); document.getElementById('dirtyDot').classList.add('on'); }
+function dlFile(content, name, saveTime = fmtNow()) { const blob = new Blob([content], { type: 'text/html;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url); lastSaveTime = saveTime; markClean(); toast('✅ 已下载'); log(`下载: ${name}`); }
+function markDirty() { localRevision++; dirty = true; cloudDirty = true; if (cloudUploadInProgress) cloudUploadPending = true; saveLocalCache(); renderLibrarySelects(); document.getElementById('dirtyDot').classList.add('on'); }
 function markClean() { dirty = false; saveLocalCache(); renderLibrarySelects(); document.getElementById('dirtyDot').classList.remove('on'); document.getElementById('lastSaveTime').textContent = lastSaveTime; }
-window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', e => { if (localSaveFailed) { e.preventDefault(); e.returnValue = ''; } });
 
 function openCloudSync() { document.getElementById('cloudSyncModal').classList.add('show'); }
 
@@ -1164,78 +1307,107 @@ function cloudFetchErrorMessage(e) {
   return e.message || String(e);
 }
 
-async function doCloudUpload() {
-  const repoPath = config.gistId; // 借用 gistId 变量存仓库路径
-  if(!repoPath || !config.githubToken) return toast('请先在设置中配置 GitHub 仓库和 Token');
-  const gProg = document.getElementById('globalProgress'), gText = document.getElementById('globalProgressText');
-  gProg.style.display = 'block'; gText.textContent = '正在覆盖上传到 GitHub 仓库...';
+function cloudShaStorageKey(repoPath) {
+  return `vocab_cloud_sha_v1:${repoPath}`;
+}
+
+function createAbortContext(externalSignal, timeoutMs) {
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromExternal = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener('abort', abortFromExternal, { once:true });
+  }
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+  return {
+    signal: controller.signal,
+    get timedOut() { return timedOut; },
+    cleanup() { clearTimeout(timer); if (externalSignal) externalSignal.removeEventListener('abort', abortFromExternal); }
+  };
+}
+
+function normalizeRequestError(error, context) {
+  if (error && error.name === 'AbortError') return new Error(context && context.timedOut ? '请求超时，请检查网络后重试' : '请求已取消');
+  return error;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 45000) {
+  const context = createAbortContext(options.signal, timeoutMs);
   try {
-      const url = `https://api.github.com/repos/${repoPath}/contents/vocab_data.json`;
-      
-      // 1. 先获取当前文件的 SHA 标识（Repo API 更新文件必须提供旧版 SHA）
-      let sha = '';
-      const getResp = await fetch(url + '?t=' + Date.now(), { headers: { 'Authorization': `Bearer ${config.githubToken}` } });
-      if(getResp.ok) { const fileData = await getResp.json(); sha = fileData.sha; }
-
-      // 2. 准备数据并进行 Base64 编码 (解决中文乱码)
-      syncCurrentLibraryWords();
-      const contentStr = JSON.stringify({ words, libraries, currentLibraryId, config: getSafeConfig(), lastSaveTime: fmtNow() });
-      const base64Content = btoa(unescape(encodeURIComponent(contentStr)));
-
-      // 3. 发送更新请求
-      const payload = { message: 'Auto-sync update via Web App', content: base64Content };
-      if (sha) payload.sha = sha;
-
-      const putResp = await fetch(url, {
-          method: 'PUT',
-          headers: { 
-              'Accept': 'application/vnd.github.v3+json',
-              'Authorization': `Bearer ${config.githubToken}`,
-              'Content-Type': 'application/json' 
-          },
-          body: JSON.stringify(payload)
-      });
-      if(!putResp.ok) throw new Error(`HTTP ${putResp.status}`);
-      
-      toast('✅ 云端仓库上传成功'); log('云端仓库上传成功 (Repo API)');
-      lastSaveTime = fmtNow(); markClean(); document.getElementById('lastSaveTime').textContent = lastSaveTime;
-      closeModal('cloudSyncModal');
-  } catch(e) {
-      toast('❌ 上传失败: ' + e.message); log('上传失败: ' + e.message);
+    const response = await fetch(url, { ...options, signal: context.signal });
+    const body = await response.arrayBuffer();
+    return new Response(body, { status:response.status, statusText:response.statusText, headers:response.headers });
+  } catch (error) {
+    throw normalizeRequestError(error, context);
   } finally {
-      if(TaskManager.processing.length===0 && TaskManager.queue.length===0) gProg.style.display = 'none'; else TaskManager.render();
+    context.cleanup();
   }
 }
-async function doCloudUpload() {
+
+function doCloudUpload(options = {}) {
+  const mode = options && options.mode === 'auto' ? 'auto' : 'manual';
+  if (cloudUploadPromise) {
+    cloudUploadPending = true;
+    if (mode === 'manual') toast('云端上传正在进行，已合并本次请求');
+    return cloudUploadPromise;
+  }
+  cloudUploadInProgress = true;
+  cloudUploadPromise = performCloudUpload(mode, options.reason || 'manual').finally(() => {
+    cloudUploadPromise = null;
+    cloudUploadInProgress = false;
+    const shouldRerun = cloudUploadPending && cloudDirty;
+    cloudUploadPending = false;
+    if (shouldRerun) setTimeout(() => doCloudUpload({ mode:'auto', reason:'changes-during-upload' }), 0);
+  });
+  return cloudUploadPromise;
+}
+
+async function performCloudUpload(mode, reason) {
   const gProg = document.getElementById('globalProgress'), gText = document.getElementById('globalProgressText');
-  gProg.style.display = 'block'; gText.textContent = '正在覆盖上传到 GitHub 仓库...';
+  gProg.style.display = 'block'; gText.textContent = mode === 'auto' ? '测验数据正在自动上传云端...' : '正在覆盖上传到 GitHub 仓库...';
   try {
       const { repoPath, githubToken } = getGithubCloudConfig();
       const url = `https://api.github.com/repos/${repoPath}/contents/vocab_data.json`;
       
       // 1. 获取当前文件的 SHA 标识（加入时间戳击穿浏览器缓存）
       let sha = '';
-      const getResp = await fetch(url + '?t=' + Date.now(), { 
+      const getResp = await fetchWithTimeout(url + '?t=' + Date.now(), {
           headers: { 
               'Authorization': `Bearer ${githubToken}`
           } 
-      });
+      }, 30000);
       
       if(getResp.ok) { 
           const fileData = await getResp.json(); 
           sha = fileData.sha; 
+      } else if (getResp.status !== 404) {
+          throw new Error(`读取云端版本失败: HTTP ${getResp.status}`);
+      }
+
+      const knownSha = localStorage.getItem(cloudShaStorageKey(repoPath)) || '';
+      if (sha && (!knownSha || sha !== knownSha)) {
+          if (mode === 'auto') {
+              toast('⚠️ 自动上传已停止：云端版本与本机不同');
+              log(`自动上传冲突 (${reason})：已保留本地数据，请先下载或手动确认上传`);
+              return false;
+          }
+          const msg = knownSha ? '检测到云端数据已被其他设备更新。' : '这是本机首次同步，但云端已经存在数据。';
+          const overwrite = confirm(`${msg}\n继续上传会覆盖云端内容。\n\n建议取消后先下载；确实要以本机数据覆盖时再选择“确定”。`);
+          if (!overwrite) { toast('已取消上传，请先下载云端数据'); return false; }
       }
 
       // 2. 准备数据并进行 Base64 编码
-      syncCurrentLibraryWords();
-      const contentStr = JSON.stringify({ words, libraries, currentLibraryId, config: getSafeConfig(), lastSaveTime: fmtNow() });
+      const syncTime = fmtNow();
+      const uploadRevision = localRevision;
+      const contentStr = JSON.stringify(getDataSnapshot(syncTime));
       const base64Content = btoa(unescape(encodeURIComponent(contentStr)));
 
       // 3. 发送更新请求
       const payload = { message: 'Auto-sync update via Web App', content: base64Content };
       if (sha) payload.sha = sha; // 必须带上刚获取的 sha
 
-      const putResp = await fetch(url, {
+      const putResp = await fetchWithTimeout(url, {
           method: 'PUT',
           headers: { 
               'Accept': 'application/vnd.github.v3+json',
@@ -1243,22 +1415,35 @@ async function doCloudUpload() {
               'Content-Type': 'application/json' 
           },
           body: JSON.stringify(payload)
-      });
+      }, 45000);
       
       if(!putResp.ok) {
           const errData = await putResp.json();
           throw new Error(errData.message || `HTTP ${putResp.status}`);
       }
+      const putData = await putResp.json();
+      const uploadedSha = putData?.content?.sha || '';
+      if (uploadedSha) localStorage.setItem(cloudShaStorageKey(repoPath), uploadedSha);
       
-      toast('✅ 云端仓库上传成功'); log('云端仓库上传成功 (Repo API)');
-      lastSaveTime = fmtNow(); markClean(); document.getElementById('lastSaveTime').textContent = lastSaveTime;
-      closeModal('cloudSyncModal');
+      toast(mode === 'auto' ? '✅ 测验数据已自动上传云端' : '✅ 云端仓库上传成功');
+      log(`云端仓库上传成功 (${reason}, revision ${uploadRevision})`);
+      lastSaveTime = syncTime;
+      if (localRevision === uploadRevision) {
+          cloudDirty = false;
+          markClean();
+      } else {
+          cloudDirty = true;
+          saveLocalCache();
+      }
+      if (mode === 'manual') closeModal('cloudSyncModal');
+      return true;
   } catch(e) {
       const msg = cloudFetchErrorMessage(e);
-      toast('❌ 上传失败: ' + msg); log('上传失败: ' + msg);
-      if((e.message || '').includes('sha')) {
+      toast((mode === 'auto' ? '❌ 自动上传失败: ' : '❌ 上传失败: ') + msg); log(`上传失败 (${reason}): ` + msg);
+      if(mode === 'manual' && (e.message || '').includes('sha')) {
           alert('【同步提示】\n获取不到指纹。请检查 GitHub 里的文件名是不是严格的全小写 vocab_data.json！\n如果确认无误，请先点一次【从云端下载】同步状态，然后再点上传。');
       }
+      return false;
   } finally {
       if(TaskManager.processing.length===0 && TaskManager.queue.length===0) gProg.style.display = 'none'; else TaskManager.render();
   }
@@ -1271,14 +1456,21 @@ async function doCloudDownload() {
   gProg.style.display = 'block'; gText.textContent = '正在从 GitHub 仓库下载...';
   try {
       const { repoPath, githubToken } = getGithubCloudConfig();
+      const cloudUrl = `https://api.github.com/repos/${repoPath}/contents/vocab_data.json`;
+      let downloadedSha = '';
+      const metaResp = await fetchWithTimeout(cloudUrl + '?t=' + Date.now(), { headers: { 'Authorization': `Bearer ${githubToken}` } }, 30000);
+      if (metaResp.ok) {
+          const meta = await metaResp.json();
+          downloadedSha = meta.sha || '';
+      }
       // 突破1MB限制的神奇请求头：application/vnd.github.v3.raw，直接返回纯文本
-      const resp = await fetch(`https://api.github.com/repos/${repoPath}/contents/vocab_data.json`, {
+      const resp = await fetchWithTimeout(cloudUrl, {
           method: 'GET',
           headers: { 
               'Accept': 'application/vnd.github.v3.raw',
               'Authorization': `Bearer ${githubToken}`
           }
-      });
+      }, 45000);
       if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const recordStr = await resp.text();
       if(!recordStr) throw new Error('云端仓库数据为空');
@@ -1298,10 +1490,13 @@ async function doCloudDownload() {
       normalizeLibraries(words);
       normalizeWords();
       ensureConfigDefaults();
+      localRevision = Math.max(localRevision + 1, parseInt(record.revision, 10) || 0);
+      cloudDirty = false;
       applyUISize(config.uiSize || 'm');
       renderLibrarySelects();
       lastSaveTime = record.lastSaveTime || fmtNow();
-      markDirty(); renderWords();
+      if (downloadedSha) localStorage.setItem(cloudShaStorageKey(repoPath), downloadedSha);
+      markClean(); renderWords();
       toast('✅ 从仓库下载成功'); log(`从云端下载了 ${libraries.reduce((n, lib)=>n + lib.words.length, 0)} 个词条`);
       closeModal('cloudSyncModal');
   } catch(e) {
@@ -1318,7 +1513,7 @@ async function doCloudDownload() {
 async function quickTest(url, key, model) { 
   const isResp = url.includes('/responses'); 
   const body = isResp ? { model, input: [{ role:'user', content:'hello' }] } : { model, messages: [{ role:'user', content:'hello' }] }; 
-  const resp = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+key }, body: JSON.stringify(body) }); 
+  const resp = await fetchWithTimeout(url, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+key }, body: JSON.stringify(body) }, 45000);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`); 
   return await resp.json(); 
 }
@@ -1348,7 +1543,7 @@ async function callAI(word) {
   const prompt = config.prompt.replace(/\{word\}/g, word); const url = config.apiUrl; const isResp = url.includes('/responses');
   const body = isResp ? { model: config.modelId, input: [{ role: 'user', content: prompt }] } : { model: config.modelId, messages: [{ role: 'user', content: prompt }], temperature: 0.3 };
   log(`→ API 请求 [${word}]`);
-  const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.apiKey }, body: JSON.stringify(body) });
+  const resp = await fetchWithTimeout(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.apiKey }, body: JSON.stringify(body) }, 90000);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`); const data = await resp.json();
   let text = '';
   if (Array.isArray(data.output)) { for (const item of data.output) { if (item.content && Array.isArray(item.content)) { for (const b of item.content) if (b.type === 'output_text' || b.type === 'text') text += b.text; } else if (item.type === 'output_text' || item.type === 'text') text += item.text; } } else if (data.output && data.output.content) { for (const b of data.output.content) if (b.type === 'output_text' || b.type === 'text') text += b.text; } else if (data.choices?.[0]) text = data.choices[0].message?.content || data.choices[0].text || ''; else if (typeof data.output === 'string') text = data.output; else if (data.result) text = typeof data.result === 'string' ? data.result : JSON.stringify(data.result);
@@ -1356,36 +1551,63 @@ async function callAI(word) {
   text = text.trim().replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim(); const p = JSON.parse(text);
   return { phonetic:p.phonetic||'', pos:p.pos||'', meaning:p.meaning||'', phrases:p.phrases||'无', inflections:p.inflections||'无', examples:p.examples||'', mnemonics:p.mnemonics||'' };
 }
-async function callAIStream(word, onChunk) {
+function emitSseLine(line, onChunk) {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith('event:') || trimmed === 'data: [DONE]' || !trimmed.startsWith('data:')) return;
+  const jsonStr = trimmed.slice(5).trim();
+  if (!jsonStr || jsonStr === '[DONE]') return;
+  try {
+    const evt = JSON.parse(jsonStr);
+    if (evt.type === 'response.output_text.delta' && evt.delta) onChunk(evt.delta);
+    else if (evt.choices?.[0]?.delta?.content) onChunk(evt.choices[0].delta.content);
+  } catch(e) {}
+}
+
+async function consumeSseResponse(resp, onChunk) {
+  if (!resp.body) throw new Error('浏览器未提供流式响应正文');
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream:true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    lines.forEach(line => emitSseLine(line, onChunk));
+  }
+  buffer += decoder.decode();
+  if (buffer.trim()) buffer.split('\n').forEach(line => emitSseLine(line, onChunk));
+}
+
+async function callAIStream(word, onChunk, externalSignal) {
   const prompt = config.qPrompt.replace(/\{word\}/g, word); const url = config.qApiUrl; const isResp = url.includes('/responses');
   const body = isResp ? { model: config.qModelId, input: [{ role: 'user', content: prompt }], stream: true } : { model: config.qModelId, messages: [{ role: 'user', content: prompt }], temperature: 0.3, stream: true };
-  const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.qApiKey }, body: JSON.stringify(body) });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  const reader = resp.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
-  while (true) {
-    const { done, value } = await reader.read(); if (done) break;
-    buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop(); 
-    for (const line of lines) { const trimmed = line.trim(); if (!trimmed || trimmed.startsWith('event:') || trimmed === 'data: [DONE]') continue; if (trimmed.startsWith('data:')) { const jsonStr = trimmed.slice(5).trim(); if (!jsonStr || jsonStr === '[DONE]') continue; try { const evt = JSON.parse(jsonStr); if (evt.type === 'response.output_text.delta' && evt.delta) onChunk(evt.delta); else if (evt.choices?.[0]?.delta?.content) onChunk(evt.choices[0].delta.content); } catch(e) {} } }
+  const context = createAbortContext(externalSignal, 120000);
+  try {
+    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + config.qApiKey }, body:JSON.stringify(body), signal:context.signal });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    await consumeSseResponse(resp, onChunk);
+  } catch(error) {
+    throw normalizeRequestError(error, context);
+  } finally {
+    context.cleanup();
   }
 }
 
-async function streamParsePrompt(prompt, onChunk) {
+async function streamParsePrompt(prompt, onChunk, externalSignal) {
   const url = config.parseApiUrl;
   const isResp = url.includes('/responses');
   const body = isResp ? { model: config.parseModelId, input: [{ role: 'user', content: prompt }], stream: true } : { model: config.parseModelId, messages: [{ role: 'user', content: prompt }], temperature: 0.3, stream: true };
-  const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.parseApiKey }, body: JSON.stringify(body) });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  const reader = resp.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
-  while (true) {
-    const { done, value } = await reader.read(); if (done) break;
-    buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop();
-    for (const line of lines) {
-      const trimmed = line.trim(); if (!trimmed || trimmed.startsWith('event:') || trimmed === 'data: [DONE]') continue;
-      if (trimmed.startsWith('data:')) {
-        const jsonStr = trimmed.slice(5).trim(); if (!jsonStr || jsonStr === '[DONE]') continue;
-        try { const evt = JSON.parse(jsonStr); if (evt.type === 'response.output_text.delta' && evt.delta) onChunk(evt.delta); else if (evt.choices?.[0]?.delta?.content) onChunk(evt.choices[0].delta.content); } catch(e) {}
-      }
-    }
+  const context = createAbortContext(externalSignal, 180000);
+  try {
+    const resp = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + config.parseApiKey }, body:JSON.stringify(body), signal:context.signal });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    await consumeSseResponse(resp, onChunk);
+  } catch(error) {
+    throw normalizeRequestError(error, context);
+  } finally {
+    context.cleanup();
   }
 }
 
@@ -1398,8 +1620,8 @@ let streamedWords = new Set();
 function getStreamedWords() { streamedWords.clear(); document.querySelectorAll('#streamBox [data-word]').forEach(el => streamedWords.add(el.getAttribute('data-word').toLowerCase())); return streamedWords; }
 function getInputWords() { const text = document.getElementById('importText').value.trim(); return !text ? [] : text.split('\n').map(w=>w.trim()).filter(w=>w); }
 function renderStreamCard(word, annotation) {
-  const e = esc, j = jsEsc(word);
-  return `<div class="sq-card" data-word="${e(word)}"><div class="sq-word">${e(word)} <button onclick="speakDirect('${j}',2)" style="font-size:calc(.75rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🔊</button></div><div class="sq-row"><span class="sq-phonetic">${e(annotation.phonetic)}</span><span class="sq-pos">${e(annotation.pos)}</span></div><div class="sq-row"><span class="sq-label">释义</span><span class="sq-val">${e(annotation.meaning)}</span></div><div class="sq-row"><span class="sq-label">短语</span><span class="sq-val">${e(annotation.phrases)}</span></div><div class="sq-row"><span class="sq-label">变形</span><span class="sq-val">${e(annotation.inflections)}</span></div><div class="sq-section"><div class="sq-row"><span class="sq-label">例句</span><span class="sq-val">${e(annotation.examples).replace(/\n/g,'<br>')}</span></div></div><div class="sq-section"><div class="sq-row"><span class="sq-label">助记</span><span class="sq-val">${e(annotation.mnemonics)}</span></div></div></div>`;
+  const e = esc;
+  return `<div class="sq-card" data-word="${e(word)}"><div class="sq-word">${e(word)} <button class="speak-direct-btn" data-speak-word="${e(word)}" data-speak-type="2" style="font-size:calc(.75rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🔊</button></div><div class="sq-row"><span class="sq-phonetic">${e(annotation.phonetic)}</span><span class="sq-pos">${e(annotation.pos)}</span></div><div class="sq-row"><span class="sq-label">释义</span><span class="sq-val">${e(annotation.meaning)}</span></div><div class="sq-row"><span class="sq-label">短语</span><span class="sq-val">${e(annotation.phrases)}</span></div><div class="sq-row"><span class="sq-label">变形</span><span class="sq-val">${e(annotation.inflections)}</span></div><div class="sq-section"><div class="sq-row"><span class="sq-label">例句</span><span class="sq-val">${e(annotation.examples).replace(/\n/g,'<br>')}</span></div></div><div class="sq-section"><div class="sq-row"><span class="sq-label">助记</span><span class="sq-val">${e(annotation.mnemonics)}</span></div></div></div>`;
 }
 
 function doQuery() {
@@ -1415,7 +1637,7 @@ function doQuery() {
         try { await callAIStream(word, (chunk) => { fullText += chunk; liveEl.innerHTML = esc(fullText) + '<span class="sq-cursor"></span>'; box.scrollTop = box.scrollHeight; });
           let cleaned = fullText.trim().replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
           try { const p = JSON.parse(cleaned); const anno = { phonetic:p.phonetic||'', pos:p.pos||'', meaning:p.meaning||'', phrases:p.phrases||'无', inflections:p.inflections||'无', examples:p.examples||'', mnemonics:p.mnemonics||'' }; card.className = ''; card.innerHTML = renderStreamCard(word, anno); }
-          catch(pe) { card.className = 'sq-card'; card.setAttribute('data-word', word); card.innerHTML = `<div class="sq-word">${esc(word)} <button onclick="speakDirect('${jsEsc(word)}',2)" style="font-size:calc(.75rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🔊</button></div><div style="font-size:.88rem;line-height:1.7;color:var(--text);white-space:pre-wrap">${esc(fullText.trim())}</div>`; }
+          catch(pe) { card.className = 'sq-card'; card.setAttribute('data-word', word); card.innerHTML = `<div class="sq-word">${esc(word)} <button class="speak-direct-btn" data-speak-word="${esc(word)}" data-speak-type="2" style="font-size:calc(.75rem * var(--us));padding:calc(1px * var(--us)) calc(6px * var(--us));border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer">🔊</button></div><div style="font-size:.88rem;line-height:1.7;color:var(--text);white-space:pre-wrap">${esc(fullText.trim())}</div>`; }
           log(`✅ 流式查询完成: ${word}`);
           if (config.autoPronounce) speakDirect(word, 2);
         } catch(e) { card.className = 'sq-card'; card.setAttribute('data-word', word); card.innerHTML = `<div class="sq-word">${esc(word)}</div><div style="color:var(--red);font-size:.85rem">❌ ${esc(e.message)}</div>`; log(`❌ 流式查询失败 [${word}]: ${e.message}`);}
@@ -1427,7 +1649,7 @@ function doQuery() {
 
 function doImportWords() {
   const items = getInputWords(); if (!items.length) return;
-  const today = fmtNow().slice(0,10);
+  const today = localDateKey();
   const seen = new Set();
   const unique = [];
   let updatedDup = 0;
@@ -1442,7 +1664,7 @@ function doImportWords() {
   if (updatedDup) { markDirty(); renderWords(); log(`更新了 ${updatedDup} 个重复词日期`); }
   if (!unique.length) { document.getElementById('importText').value = ''; toast(`已更新 ${updatedDup} 个重复词日期`); return; }
   document.getElementById('importText').value = '';
-  const entries = unique.map(w => { const entry = { id:gid(), word:w, date:today, stars:0, annotation:null, status:'loading', showAnno:false, ebLevel:0, nextReviewDate:today, wrongCount:0, note:'' }; words.push(entry); return entry; }); renderWords();
+  const entries = unique.map(w => { const entry = { id:gid(), word:w, date:today, stars:0, annotation:null, status:'loading', showAnno:false, wrongCount:0, note:'', ...createReviewState() }; words.push(entry); return entry; }); markDirty(); renderWords();
   const tasks = entries.map(entry => ({
     id: gid(), word: entry.word, type: 'import', entry, fn: async () => {
       try { entry.annotation = await callAI(entry.word); entry.status = 'loaded'; log(`✅ 导入成功: ${entry.word}`); } catch(e) { entry.status = 'error'; log(`❌ 导入失败 [${entry.word}]: ${e.message}`); } markDirty(); renderWords();
@@ -1508,6 +1730,9 @@ async function doAnalyze() {
   box.innerHTML = '<div class="ai-think">🤖 AI 正在深度阅读并思考中</div>';
   
   const myExecId = ++paraExecId;
+  if (paraAbortController) paraAbortController.abort();
+  paraAbortController = new AbortController();
+  const requestController = paraAbortController;
 
   let fullText = '';
   let isFirstChunk = true;
@@ -1526,7 +1751,7 @@ async function doAnalyze() {
           const isAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 30;
           contentNode.appendChild(document.createTextNode(delta));
           if(isAtBottom) box.scrollTop = box.scrollHeight;
-      });
+      }, requestController.signal);
       
       if(myExecId !== paraExecId) return;
 
@@ -1544,6 +1769,8 @@ async function doAnalyze() {
           errNode.textContent = `❌ 解析中断: ${e.message}`;
           box.appendChild(errNode);
       }
+  } finally {
+      if (paraAbortController === requestController) paraAbortController = null;
   }
 }
 
@@ -1558,6 +1785,9 @@ async function doWritingReview() {
   box.innerHTML = '<div class="ai-think">📝 AI 正在按六级标准批改中</div>';
 
   const myExecId = ++writingExecId;
+  if (writingAbortController) writingAbortController.abort();
+  writingAbortController = new AbortController();
+  const requestController = writingAbortController;
   let isFirstChunk = true;
   let contentNode = document.createElement('span');
 
@@ -1577,7 +1807,7 @@ async function doWritingReview() {
       const isAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 30;
       contentNode.appendChild(document.createTextNode(delta));
       if(isAtBottom) box.scrollTop = box.scrollHeight;
-    });
+    }, requestController.signal);
 
     if(myExecId !== writingExecId) return;
     if(isFirstChunk) box.innerHTML = '<span style="color:var(--red)">⚠️ 批改完成，但API未返回有效内容。请检查密钥或网络。</span>';
@@ -1592,6 +1822,8 @@ async function doWritingReview() {
       errNode.textContent = `❌ 批改中断: ${e.message}`;
       box.appendChild(errNode);
     }
+  } finally {
+    if (writingAbortController === requestController) writingAbortController = null;
   }
 }
 
@@ -1614,6 +1846,9 @@ async function doFollowUp() {
     box.innerHTML = '<div class="ai-think" style="font-size:0.85rem">🤖 AI 正在思考回答...</div>';
     
     const myExecId = ++fuExecId;
+    if (fuAbortController) fuAbortController.abort();
+    fuAbortController = new AbortController();
+    const requestController = fuAbortController;
     
     let isFirstChunk = true;
     let contentNode = document.createElement('span');
@@ -1630,7 +1865,7 @@ async function doFollowUp() {
             const isAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 20;
             contentNode.appendChild(document.createTextNode(delta));
             if(isAtBottom) box.scrollTop = box.scrollHeight;
-        });
+        }, requestController.signal);
         
         if (myExecId === fuExecId && isFirstChunk) {
             box.innerHTML = '<span style="color:var(--red)">⚠️ API未返回有效内容，请检查网络、模型或密钥配置。</span>';
@@ -1644,6 +1879,8 @@ async function doFollowUp() {
             errNode.textContent = `❌ 追问中断: ${e.message}`;
             box.appendChild(errNode);
         }
+    } finally {
+        if (fuAbortController === requestController) fuAbortController = null;
     }
 }
 
@@ -1895,6 +2132,7 @@ document.addEventListener('touchstart', function(e) {
 
 function hideWordPopup() {
   wp.style.display = 'none';
+  if (wordPopupAbortController) { wordPopupAbortController.abort(); wordPopupAbortController = null; }
   currentWordPopupId++; // ID自增，使得尚未收到数据的后台网络流在回调时自我销毁
 }
 
@@ -1946,48 +2184,27 @@ async function showWordPopup(word, x, y, autoSearch = true) {
       body.innerHTML = '<div class="ai-think" style="font-size:0.85rem">🔍 正在检索并生成释义</div>';
       
       const myPopupId = ++currentWordPopupId;
+      if (wordPopupAbortController) wordPopupAbortController.abort();
+      wordPopupAbortController = new AbortController();
+      const requestController = wordPopupAbortController;
 
       let fullText = '';
       let isFirstChunk = true;
       let contentNode = document.createElement('span');
 
       try {
-          const prompt = config.qPrompt.replace(/\{word\}/g, word); 
-          const url = config.qApiUrl; const isResp = url.includes('/responses');
-          const reqBody = isResp ? { model: config.qModelId, input: [{ role: 'user', content: prompt }], stream: true } : { model: config.qModelId, messages: [{ role: 'user', content: prompt }], temperature: 0.3, stream: true };
-          
-          const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.qApiKey }, body: JSON.stringify(reqBody) });
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const reader = resp.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
-          
-          while (true) {
+          await callAIStream(word, (delta) => {
               if (myPopupId !== currentWordPopupId) return;
-              const { done, value } = await reader.read(); if (done) break;
-              buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop(); 
-              for (const line of lines) { 
-                  const trimmed = line.trim(); if (!trimmed || trimmed.startsWith('event:') || trimmed === 'data: [DONE]') continue; 
-                  if (trimmed.startsWith('data:')) { 
-                      const jsonStr = trimmed.slice(5).trim(); if (!jsonStr || jsonStr === '[DONE]') continue; 
-                      try { const evt = JSON.parse(jsonStr); 
-                          let delta = '';
-                          if (evt.type === 'response.output_text.delta' && evt.delta) delta = evt.delta; 
-                          else if (evt.choices?.[0]?.delta?.content) delta = evt.choices[0].delta.content;
-                          
-                          if(delta) {
-                              if (isFirstChunk) {
-                                  body.innerHTML = '';
-                                  body.appendChild(contentNode);
-                                  isFirstChunk = false;
-                              }
-                              fullText += delta;
-                              const isAtBottom = body.scrollHeight - body.scrollTop <= body.clientHeight + 20;
-                              contentNode.appendChild(document.createTextNode(delta));
-                              if(isAtBottom) body.scrollTop = body.scrollHeight;
-                          }
-                      } catch(e) {} 
-                  } 
+              if (isFirstChunk) {
+                  body.innerHTML = '';
+                  body.appendChild(contentNode);
+                  isFirstChunk = false;
               }
-          }
+              fullText += delta;
+              const isAtBottom = body.scrollHeight - body.scrollTop <= body.clientHeight + 20;
+              contentNode.appendChild(document.createTextNode(delta));
+              if(isAtBottom) body.scrollTop = body.scrollHeight;
+          }, requestController.signal);
           if(isFirstChunk && myPopupId === currentWordPopupId) {
               body.innerHTML = '<span style="color:var(--red)">⚠️ API未返回有效内容，请检查网络、模型或密钥配置。</span>';
               btnSearch.style.display = 'inline-block';
@@ -2004,6 +2221,8 @@ async function showWordPopup(word, x, y, autoSearch = true) {
               body.appendChild(errNode);
               btnSearch.style.display = 'inline-block';
           }
+      } finally {
+          if (wordPopupAbortController === requestController) wordPopupAbortController = null;
       }
   };
 
@@ -2022,7 +2241,7 @@ function importSingleWord(w, targetLibraryId, noteText = '') {
   const lib = getLibrary(targetLibraryId || currentLibraryId);
   const list = lib.words;
   const existing = list.find(x => x.word.toLowerCase() === w.toLowerCase());
-  const today = fmtNow().slice(0,10);
+  const today = localDateKey();
   if(existing) {
     existing.date = today;
     if (noteText) existing.note = existing.note ? `${existing.note}\n${noteText}` : noteText;
@@ -2032,8 +2251,9 @@ function importSingleWord(w, targetLibraryId, noteText = '') {
     return toast(`「${w}」已存在于「${lib.name}」，已更新日期${noteText ? '和笔记' : ''}`);
   }
 
-  const entry = { id:gid(), word:w, date:today, stars:0, annotation:null, status:'loading', showAnno:false, ebLevel:0, nextReviewDate:today, wrongCount:0, note:noteText };
+  const entry = { id:gid(), word:w, date:today, stars:0, annotation:null, status:'loading', showAnno:false, wrongCount:0, note:noteText, ...createReviewState() };
   list.push(entry);
+  markDirty();
   if (lib.id === currentLibraryId) { words = list; renderWords(); }
   
   TaskManager.add([{
@@ -2102,7 +2322,7 @@ function getSorted() {
   const isFilterActive = f.today || f.wrong || f.none || f.stMin > 0 || f.stMax < 5 || f.ebMin > 0 || f.ebMax < 7;
   document.getElementById('filterBadge').style.display = isFilterActive ? 'inline-block' : 'none';
 
-  const todayStr = fmtNow().slice(0,10);
+  const nowMs = Date.now();
 
   list = list.filter(w => {
     // 1. 星级强约束
@@ -2110,7 +2330,7 @@ function getSorted() {
 
     let hasCycle = w.ebLevel !== undefined && w.ebLevel !== null && w.ebLevel !== -1;
     let isWrong = w.wrongCount > 0;
-    let isToday = hasCycle && w.ebLevel < 7 && w.nextReviewDate <= todayStr;
+    let isToday = hasCycle && isReviewDue(w, nowMs);
     let isNone = !hasCycle;
 
     // 2. 周期范围约束
@@ -2151,12 +2371,17 @@ function renderWords() {
 
   const showDay = document.getElementById('sortPrimary').value === 'date';
   let h='', curDate='';
-  const today = fmtNow().slice(0,10);
+  const nowMs = Date.now();
+  const dayGroups = new Map();
+  if (showDay) list.forEach(w => {
+    if (!dayGroups.has(w.date)) dayGroups.set(w.date, []);
+    dayGroups.get(w.date).push(w);
+  });
 
   for (const w of list) {
     if (showDay && w.date!==curDate) {
       curDate=w.date;
-      const dayWords = list.filter(x=>x.date===curDate);
+      const dayWords = dayGroups.get(curDate) || [];
       const isCollapsed = collapsedDays.has(curDate);
       const allSel = dayWords.every(x => selected.has(x.id));
       
@@ -2182,20 +2407,13 @@ function renderWords() {
       else if (w.ebLevel === 0) badges += `<span class="bdg bdg-l0">L0 新词</span>`;
       else badges += `<span class="bdg bdg-lx">L${w.ebLevel}</span>`;
     }
-    if (config.showBadgeReview && w.ebLevel !== undefined && w.ebLevel < 7 && w.nextReviewDate <= today) badges += `<span class="bdg bdg-td">⏳待背</span>`;
+    if (config.showBadgeReview && isReviewDue(w, nowMs)) badges += `<span class="bdg bdg-td">⏳待背</span>`;
     
     // 距离待背时间显示
-    if (config.showBadgeTimeLeft && w.ebLevel !== undefined && w.ebLevel < 7 && w.nextReviewDate > today) {
-        const now = new Date();
-        const revDate = new Date(w.nextReviewDate + 'T00:00:00');
-        const diffMs = revDate - now;
-        if (diffMs > 0) {
-            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            const diffHours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
-            let timeStr = '';
-            if (diffDays > 0) timeStr += diffDays + '天';
-            timeStr += diffHours + '小时';
-            badges += `<span class="bdg" style="background:#e0f7fa;color:#00838f;border:1px solid #b2ebf2">距待背:${timeStr}</span>`;
+    if (config.showBadgeTimeLeft && w.ebLevel !== undefined && w.ebLevel < 7) {
+        const reviewAt = getNextReviewMs(w);
+        if (Number.isFinite(reviewAt) && reviewAt > nowMs) {
+            badges += `<span class="bdg review-countdown" data-review-at="${reviewAt}" title="下次复习：${esc(formatLocalDateTime(reviewAt))}" style="background:#e0f7fa;color:#00838f;border:1px solid #b2ebf2">距待背:${formatReviewCountdown(reviewAt - nowMs)}</span>`;
         }
     }
 
@@ -2240,7 +2458,39 @@ function renderWords() {
   }
   el.innerHTML = h;
 }
-function fmtDate(ds) { const d=new Date(ds+'T00:00:00'), t=new Date(), ts=t.toISOString().slice(0,10); const y=new Date(t); y.setDate(y.getDate()-1); if(ds===ts) return '📅 今天 ('+ds+')'; if(ds===y.toISOString().slice(0,10)) return '📅 昨天 ('+ds+')'; return `📅 ${Math.floor((t-d)/864e5)}天前 (${ds})`; }
+function formatLocalDateTime(value) {
+  const d = new Date(value);
+  if (!Number.isFinite(d.getTime())) return '';
+  return `${localDateKey(d)} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
+function formatReviewCountdown(diffMs) {
+  const totalMinutes = Math.max(1, Math.ceil(diffMs / 60000));
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}天${hours}小时`;
+  if (hours > 0) return `${hours}小时${minutes}分`;
+  return `${minutes}分`;
+}
+function refreshReviewCountdowns() {
+  const nowMs = Date.now();
+  let becameDue = false;
+  document.querySelectorAll('.review-countdown').forEach(el => {
+    const reviewAt = Number(el.dataset.reviewAt);
+    if (!Number.isFinite(reviewAt)) return;
+    if (reviewAt <= nowMs) becameDue = true;
+    else el.textContent = `距待背:${formatReviewCountdown(reviewAt - nowMs)}`;
+  });
+  if (becameDue) renderWords();
+}
+function fmtDate(ds) {
+  const dateMs = legacyReviewDateMs(ds), today = localDateKey(), yesterday = localDateKey(Date.now() - REVIEW_DAY_MS);
+  if(ds===today) return '📅 今天 ('+ds+')';
+  if(ds===yesterday) return '📅 昨天 ('+ds+')';
+  const todayMs = legacyReviewDateMs(today);
+  const daysAgo = Number.isFinite(dateMs) ? Math.max(0, Math.round((todayMs-dateMs)/REVIEW_DAY_MS)) : 0;
+  return `📅 ${daysAgo}天前 (${ds})`;
+}
 
 // =====================================================
 // DUAL MODE & INTERACTIONS
@@ -2379,12 +2629,10 @@ function batchSetLevel(selEl) {
   const val = selEl.value; selEl.value = "";
   if (!val || selected.size === 0) return toast('未选择单词');
   let lvl = parseInt(val);
+  const changedAt = Date.now();
   selected.forEach(id => { 
     let w = words.find(x=>x.id===id); 
-    if(w) { 
-      w.ebLevel = lvl; 
-      w.nextReviewDate = lvl === 0 ? fmtNow().slice(0,10) : calcNextDate(lvl); 
-    } 
+    if(w) setReviewSchedule(w, lvl, changedAt, lvl === 0 ? 0 : EB_DAYS[lvl], false);
   });
   markDirty(); renderWords(); toast(`已将 ${selected.size} 个单词强设为 L${lvl===7?'掌握':lvl}`); log(`批量将 ${selected.size} 个单词的周期设为了 L${lvl}`);
 }
@@ -2399,11 +2647,30 @@ var currentTestWord = null;
 var currentInputHasErr = false;
 var waitingForNext = false;
 
+function recordReviewResult(w, result, reviewedAt = Date.now()) {
+  if (!w) return;
+  if (result === 'correct') {
+    const nextLevel = Math.min(7, (w.ebLevel || 0) + 1);
+    setReviewSchedule(w, nextLevel, reviewedAt, EB_DAYS[nextLevel], true);
+    if (config.reciteRemoveWrong && w.wrongCount > 0) w.wrongCount = 0;
+  } else if (result === 'wrong') {
+    w.wrongCount = (w.wrongCount || 0) + 1;
+    if (config.recitePunish === 'reset') {
+      setReviewSchedule(w, 0, reviewedAt, 0, true);
+    } else {
+      const punishedLevel = config.recitePunish === 'downgrade' ? Math.max(0, (w.ebLevel || 0) - 1) : (w.ebLevel || 0);
+      setReviewSchedule(w, punishedLevel, reviewedAt, 1, true);
+    }
+  }
+  testSessionChanged = true;
+  markDirty();
+}
+
 function startTest() {
   if (selected.size === 0) return toast('请先选择要测验的单词！');
   testQueue = Array.from(selected).map(id => words.find(w=>w.id===id)).filter(w => w && w.annotation && w.status==='loaded');
   if (testQueue.length === 0) return toast('选中词中没有已成功生成注释的单词，无法测试');
-  testIndex = 0; document.getElementById('testModal').style.display = 'flex'; document.body.style.overflow = 'hidden'; nextTestCard();
+  testIndex = 0; testSessionChanged = false; document.getElementById('testModal').style.display = 'flex'; document.body.style.overflow = 'hidden'; nextTestCard();
   log(`开始了测验，共 ${testQueue.length} 个单词`);
 }
 
@@ -2413,8 +2680,17 @@ function confirmExitTest() {
 }
 
 function exitTest() {
+  const shouldSync = testSessionChanged;
   clearInterval(testAudioTimer); document.getElementById('testModal').style.display = 'none'; document.body.style.overflow = '';
-  testQueue = []; testIndex = 0; markDirty(); renderWords();
+  testQueue = []; testIndex = 0; testSessionChanged = false; renderWords();
+  if (shouldSync) scheduleReviewCloudSync();
+}
+
+function scheduleReviewCloudSync() {
+  if (!config.autoCloudSyncAfterTest) { log('测验结果已保存到本地；自动上传已关闭'); return; }
+  if (!config.gistId || !config.githubToken) { toast('测验结果已保存到本地（未配置云同步）'); log('测验结束：未配置 GitHub，跳过自动上传'); return; }
+  if (!navigator.onLine) { toast('测验结果已保存到本地，联网后自动上传'); log('测验结束：当前离线，保留云端待同步状态'); return; }
+  setTimeout(() => doCloudUpload({ mode:'auto', reason:'review-session-ended' }), 0);
 }
 
 function genHint(word) {
@@ -2489,12 +2765,7 @@ document.getElementById('tmInput').addEventListener('input', function(e) {
   
   if (val === target) {
     if (!currentInputHasErr) { 
-      const today = fmtNow().slice(0,10);
-      if ((currentTestWord.ebLevel || 0) === 0 || currentTestWord.nextReviewDate <= today) {
-        currentTestWord.ebLevel = Math.min(7, (currentTestWord.ebLevel||0) + 1);
-        currentTestWord.nextReviewDate = calcNextDate(currentTestWord.ebLevel);
-      }
-      if (config.reciteRemoveWrong && currentTestWord.wrongCount > 0) { currentTestWord.wrongCount = 0; } 
+      recordReviewResult(currentTestWord, 'correct');
     }
 
     this.className = 'test-input ok'; this.readOnly = true; clearInterval(testAudioTimer);
@@ -2521,20 +2792,7 @@ function testGiveUp() {
   
   if (!currentInputHasErr) {
     currentInputHasErr = true;
-    currentTestWord.wrongCount = (currentTestWord.wrongCount || 0) + 1;
-    
-    const today = fmtNow().slice(0,10);
-    if (config.recitePunish === 'reset') { 
-      currentTestWord.ebLevel = 0; 
-      currentTestWord.nextReviewDate = today; 
-    } else {
-      if (config.recitePunish === 'downgrade') { 
-        currentTestWord.ebLevel = Math.max(0, (currentTestWord.ebLevel||0) - 1); 
-      }
-      if (currentTestWord.nextReviewDate <= today) {
-        currentTestWord.nextReviewDate = today; 
-      }
-    }
+    recordReviewResult(currentTestWord, 'wrong');
   }
   
   document.getElementById('btnShowAns').style.display = 'none';
@@ -2596,6 +2854,7 @@ function openSettings() {
   syncUI('cfgRRemWr','rwTrack','rwKnob', config.reciteRemoveWrong);
   syncUI('cfgRForceRewrite','frTrack','frKnob', config.reciteForceRewrite);
   syncUI('cfgRAnsPronounce','rapTrack','rapKnob', config.recitePronounceAns);
+  syncUI('cfgRAutoCloud','racTrack','racKnob', config.autoCloudSyncAfterTest);
   
   syncUI('cfgRShowMeaning','smTrack','smKnob', config.reciteShowMeaning);
   syncUI('cfgRShowPhonetic','spTrack','spKnob', config.reciteShowPhonetic);
@@ -2652,6 +2911,7 @@ function saveSettings() {
   config.reciteRemoveWrong = document.getElementById('cfgRRemWr').checked;
   config.reciteForceRewrite = document.getElementById('cfgRForceRewrite').checked;
   config.recitePronounceAns = document.getElementById('cfgRAnsPronounce').checked;
+  config.autoCloudSyncAfterTest = document.getElementById('cfgRAutoCloud').checked;
   
   config.reciteShowMeaning = document.getElementById('cfgRShowMeaning').checked;
   config.reciteShowPhonetic = document.getElementById('cfgRShowPhonetic').checked;
@@ -2672,8 +2932,8 @@ function syncUI(id, trackId, knobId, forceVal) {
 }
 function resetAllEbbinghaus() {
   if(!confirm('确定要将所有单词的进度（含错题本）重置为未学习状态吗？此操作无法撤销。')) return;
-  const today = fmtNow().slice(0,10);
-  words.forEach(w => { w.ebLevel=0; w.nextReviewDate=today; w.wrongCount=0; });
+  const changedAt = Date.now();
+  words.forEach(w => { setReviewSchedule(w, 0, changedAt, 0, false); w.lastReviewedAt=null; w.wrongCount=0; });
   markDirty(); renderWords(); toast('所有词汇记忆周期已重置');
 }
 
@@ -2702,7 +2962,67 @@ function saveEdit() {
   e.status='loaded'; markDirty(); renderWords(); closeModal('editModal'); toast('已保存');
 }
 
-function exportJson() { syncCurrentLibraryWords(); const data = { words, libraries, currentLibraryId, config: getSafeConfig(), lastSaveTime }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `词汇_${getTimestamp()}.json`; a.click(); URL.revokeObjectURL(url); toast('✅ 已导出'); log('导出了 JSON 文件'); }
+function exportJson() { const data = getDataSnapshot(); const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `词汇_${getTimestamp()}.json`; a.click(); URL.revokeObjectURL(url); toast('✅ 已导出'); log('导出了 JSON 文件'); }
+
+function sanitizeImportedWordList(rawList) {
+  if (!Array.isArray(rawList)) return { words:[], rejected:0 };
+  const candidates = rawList.map(item => item && typeof item === 'object' ? { ...item } : item);
+  normalizeWordList(candidates);
+  const deduped = [];
+  mergeWordLists(deduped, candidates);
+  return { words:deduped, rejected:rawList.length - deduped.length };
+}
+
+function mergeWordLists(target, incoming) {
+  const index = new Map(target.map(w => [w.word.toLowerCase(), w]));
+  let added = 0, updated = 0, skipped = 0;
+  incoming.forEach(source => {
+    const key = source.word.toLowerCase();
+    const existing = index.get(key);
+    if (!existing) {
+      target.push(source); index.set(key, source); added++; return;
+    }
+    const sourceUpdated = validTimeMs(source.updatedAt) || 0;
+    const existingUpdated = validTimeMs(existing.updatedAt) || 0;
+    const sourceReviewUpdated = validTimeMs(source.reviewUpdatedAt) || 0;
+    const existingReviewUpdated = validTimeMs(existing.reviewUpdatedAt) || 0;
+    let changed = false;
+    if (sourceUpdated > existingUpdated) {
+      const stableId = existing.id;
+      Object.assign(existing, source, { id:stableId });
+      changed = true;
+    } else if (sourceReviewUpdated > existingReviewUpdated) {
+      ['ebLevel','nextReviewAt','nextReviewDate','lastReviewedAt','reviewUpdatedAt','wrongCount'].forEach(k => { existing[k] = source[k]; });
+      existing.updatedAt = source.updatedAt || existing.updatedAt;
+      changed = true;
+    } else if (!existing.note && source.note) {
+      existing.note = source.note;
+      changed = true;
+    }
+    if (changed) updated++; else skipped++;
+  });
+  normalizeWordList(target);
+  return { added, updated, skipped };
+}
+
+function prepareJsonImport(data) {
+  if (!data || typeof data !== 'object') throw new Error('JSON 顶层必须是对象');
+  let rejected = 0;
+  if (Array.isArray(data.libraries)) {
+    const libraries = data.libraries.filter(src => src && typeof src === 'object').map((src, index) => {
+      const clean = sanitizeImportedWordList(src.words);
+      rejected += clean.rejected;
+      return { id:normalizeLibraryId(src.id || gid()), name:String(src.name || `导入词库${index + 1}`).trim(), words:clean.words };
+    });
+    if (!libraries.length) throw new Error('没有有效词库');
+    return { libraries, words:null, rejected, total:libraries.reduce((n, lib) => n + lib.words.length, 0) };
+  }
+  if (Array.isArray(data.words)) {
+    const clean = sanitizeImportedWordList(data.words);
+    return { libraries:null, words:clean.words, rejected:clean.rejected, total:clean.words.length };
+  }
+  throw new Error('缺少 words 或 libraries 数组');
+}
 
 function handleJsonImport(e) {
   const file = e.target.files[0];
@@ -2711,32 +3031,32 @@ function handleJsonImport(e) {
   reader.onload = function(ev) {
     try {
       const data = JSON.parse(ev.target.result);
-      if (!data.words && !data.libraries) throw new Error('无效数据');
-      const importLibs = Array.isArray(data.libraries) ? data.libraries : null;
-      const totalWords = importLibs ? importLibs.reduce((n, lib) => n + (Array.isArray(lib.words) ? lib.words.length : 0), 0) : data.words.length;
-      const merge = confirm(`文件包含 ${totalWords} 个词条。\n确定=合并，取消=替换全部`);
+      const prepared = prepareJsonImport(data);
+      const importLibs = prepared.libraries;
+      const importWords = prepared.words;
+      const totalWords = prepared.total;
+      const rejectedText = prepared.rejected ? `，忽略 ${prepared.rejected} 条无效记录` : '';
+      const merge = confirm(`文件包含 ${totalWords} 个有效词条${rejectedText}。\n确定=合并，取消=替换全部`);
       let shouldSyncWords = false;
+      let mergeStats = { added:0, updated:0, skipped:0 };
       if (merge) {
         syncCurrentLibraryWords();
         if (importLibs) {
           importLibs.forEach(src => {
-            const srcWords = Array.isArray(src.words) ? src.words : [];
             let lib = libraries.find(x => x.id === src.id) || libraries.find(x => x.name === src.name);
             if (!lib) { lib = { id: normalizeLibraryId(src.id || gid()), name: src.name || '导入词库', words: [] }; libraries.push(lib); }
-            const ext = new Set(lib.words.map(w => w.word.toLowerCase()));
-            lib.words = [...lib.words, ...srcWords.filter(w => !ext.has(w.word.toLowerCase()))];
+            const stats = mergeWordLists(lib.words, src.words);
+            mergeStats.added += stats.added; mergeStats.updated += stats.updated; mergeStats.skipped += stats.skipped;
           });
           words = getCurrentLibrary().words;
         } else {
-          const ext = new Set(words.map(w => w.word.toLowerCase()));
-          const nw = data.words.filter(w => !ext.has(w.word.toLowerCase()));
-          words = [...words, ...nw];
+          mergeStats = mergeWordLists(words, importWords);
           shouldSyncWords = true;
         }
       } else {
         libraries = importLibs || [];
         currentLibraryId = data.currentLibraryId || 'default';
-        words = Array.isArray(data.words) ? data.words : [];
+        words = importWords || [];
         shouldSyncWords = !importLibs;
       }
       if (shouldSyncWords) syncCurrentLibraryWords();
@@ -2744,8 +3064,8 @@ function handleJsonImport(e) {
       normalizeWords();
       renderLibrarySelects();
       
-      if (data.config && confirm('是否导入设置？')) {
-        let c = data.config;
+      if (data.config && typeof data.config === 'object' && confirm('是否导入设置？')) {
+        let c = { ...data.config };
         // 防覆盖，防止导入空密码把本地密码抹掉
         c.apiKey = config.apiKey;
         c.qApiKey = config.qApiKey;
@@ -2766,8 +3086,8 @@ function handleJsonImport(e) {
       
       markDirty();
       renderWords();
-      toast('导入成功');
-      log(`导入了 ${totalWords} 个词条`);
+      toast(merge ? `导入成功：新增 ${mergeStats.added}，更新 ${mergeStats.updated}` : `导入成功：${totalWords} 个词条`);
+      log(`JSON 导入完成：有效 ${totalWords}，无效 ${prepared.rejected}` + (merge ? `，新增 ${mergeStats.added}，更新 ${mergeStats.updated}，跳过 ${mergeStats.skipped}` : ''));
     } catch(err) {
       toast('❌ 导入失败');
       log(`导入失败: ${err.message}`);
@@ -2793,22 +3113,39 @@ function speakFallback(word, type) {
 }
 if (window.speechSynthesis) { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); }
 
-function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function closeModal(id) {
+  const modal = document.getElementById(id);
+  if (modal) modal.classList.remove('show');
+  if (id === 'importModal') {
+    paraExecId++; writingExecId++;
+    if (paraAbortController) { paraAbortController.abort(); paraAbortController = null; }
+    if (writingAbortController) { writingAbortController.abort(); writingAbortController = null; }
+  } else if (id === 'followUpModal') {
+    fuExecId++;
+    if (fuAbortController) { fuAbortController.abort(); fuAbortController = null; }
+  }
+}
 function gid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
 function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
-function jsEsc(s) { return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"'); }
 function fmtNow() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; }
 function updateClock() { document.getElementById('currentTime').textContent = fmtNow(); }
 function toast(msg) { document.querySelectorAll('.toast').forEach(t=>t.remove()); const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2500); }
 
 document.querySelectorAll('.mc').forEach(btn => { /* onclick 已写 */ });
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.speak-direct-btn');
+  if (btn) { e.stopPropagation(); speakDirect(btn.dataset.speakWord || '', parseInt(btn.dataset.speakType, 10) || 2); }
+});
 document.addEventListener('keydown',e=>{ 
     if(e.key==='Escape') { 
         if(document.getElementById('testModal').style.display==='flex') confirmExitTest(); 
-        else { document.querySelectorAll('.mo.show').forEach(m=>m.classList.remove('show')); hideWordPopup(); } 
+        else { document.querySelectorAll('.mo.show').forEach(m=>closeModal(m.id)); hideWordPopup(); }
     } 
 });
 document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.key==='s') { e.preventDefault(); saveFile(); } });
+window.addEventListener('online', () => {
+  if (cloudDirty && config.autoCloudSyncAfterTest && config.gistId && config.githubToken) doCloudUpload({ mode:'auto', reason:'network-restored' });
+});
 
 loadEmbedded(); loadLocalCache(); document.getElementById('lastSaveTime').textContent = lastSaveTime || '未保存';
 
@@ -2839,7 +3176,10 @@ if(document.getElementById('btnRange')) document.getElementById('btnRange').text
 renderWords();
 // ==============================================================================
 
-updateClock(); setInterval(updateClock, 1000); log('系统启动完成，API测试与日志模块已加载');
+updateClock(); setInterval(updateClock, 1000); setInterval(refreshReviewCountdowns, 30000); log('系统启动完成，API测试与日志模块已加载');
+setTimeout(() => {
+  if (navigator.onLine && cloudDirty && config.autoCloudSyncAfterTest && config.gistId && config.githubToken) doCloudUpload({ mode:'auto', reason:'startup-retry' });
+}, 800);
 </script>
 
 </body></html>
