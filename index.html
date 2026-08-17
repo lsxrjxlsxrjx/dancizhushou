@@ -26,7 +26,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .cloud-save-status{border:0;background:transparent;font-family:var(--f);font-size:.75rem;font-weight:700;padding:2px 0;cursor:pointer;color:var(--muted);text-align:left}
 .cloud-save-status[data-state="saved"]{color:var(--green)}
-.cloud-save-status[data-state="uploading"]{color:#2980b9}
+.cloud-save-status[data-state="uploading"],.cloud-save-status[data-state="checking"],.cloud-save-status[data-state="downloading"]{color:#2980b9}
 .cloud-save-status[data-state="pending"],.cloud-save-status[data-state="offline"],.cloud-save-status[data-state="disabled"]{color:#d26a00}
 .cloud-save-status[data-state="error"],.cloud-save-status[data-state="conflict"]{color:var(--red)}
 .cloud-status-card{border:1px solid var(--border);border-radius:10px;padding:13px 14px;background:var(--bg);line-height:1.55}
@@ -589,7 +589,11 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
         <label style="margin:0">数据修改后自动保存云端</label>
         <label style="position:relative;display:inline-block;width:44px;height:24px;margin:0"><input type="checkbox" id="cfgRAutoCloud" style="opacity:0;width:0;height:0" onchange="syncUI('cfgRAutoCloud','racTrack','racKnob')"><span id="racTrack" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span><span id="racKnob" style="position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.3s"></span></label>
       </div>
-      <p class="lm-tip" style="margin:0 0 14px">本地仍实时保存；云端默认在停止修改45秒后上传，持续修改最长等待2分钟，测验结束等关键节点立即上传。</p>
+      <div class="sg" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label style="margin:0">启动或回到前台时自动获取云端更新</label>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;margin:0"><input type="checkbox" id="cfgAutoCloudDownload" style="opacity:0;width:0;height:0" onchange="syncUI('cfgAutoCloudDownload','acdTrack','acdKnob')"><span id="acdTrack" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span><span id="acdKnob" style="position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.3s"></span></label>
+      </div>
+      <p class="lm-tip" style="margin:0 0 14px">本地仍实时保存；停止修改45秒后自动上传。新设备首次填写仓库和 Token 后会自动下载；本地与云端同时变化时会停止覆盖并提示冲突。</p>
 
       <div style="font-size:.9rem;font-weight:700;color:var(--muted);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--border)">⚙ 其他设置</div>
       <div class="sg"><label>划词“添加笔记”默认加入词库</label><select id="cfgNoteLibrary"></select></div>
@@ -812,6 +816,11 @@ var cloudDirty = false;
 var cloudUploadPromise = null;
 var cloudUploadPending = false;
 var cloudUploadInProgress = false;
+var cloudDownloadPromise = null;
+var cloudDownloadInProgress = false;
+var cloudCheckPromise = null;
+var cloudCheckInProgress = false;
+var cloudLastCheckAt = 0;
 var cloudAutoSaveTimer = null;
 var cloudAutoSaveMaxTimer = null;
 var cloudRetryTimer = null;
@@ -822,6 +831,7 @@ var cloudPendingReason = '';
 var CLOUD_AUTOSAVE_DELAY_MS = 45 * 1000;
 var CLOUD_AUTOSAVE_MAX_WAIT_MS = 2 * 60 * 1000;
 var CLOUD_RETRY_DELAYS_MS = [15 * 1000, 60 * 1000, 5 * 60 * 1000, 15 * 60 * 1000];
+var CLOUD_CHECK_MIN_INTERVAL_MS = 60 * 1000;
 var testSessionChanged = false;
 var paraAbortController = null;
 var fuAbortController = null;
@@ -1202,6 +1212,7 @@ function loadEmbedded() {
       reciteRemoveWrong: d.config?.reciteRemoveWrong !== false, reciteHintPct: d.config?.reciteHintPct !== undefined ? d.config.reciteHintPct : 50,
       reciteForceRewrite: d.config?.reciteForceRewrite !== false, recitePronounceAns: d.config?.recitePronounceAns !== false, globalMemo: d.config?.globalMemo || "",
       autoCloudSyncAfterTest: d.config?.autoCloudSyncAfterTest !== false,
+      autoCloudDownloadOnStart: d.config?.autoCloudDownloadOnStart !== false,
       uiSize: d.config?.uiSize || 'm',
       showBadgeStar: d.config?.showBadgeStar !== false,
       showBadgeLevel: d.config?.showBadgeLevel !== false,
@@ -1384,6 +1395,7 @@ function ensureConfigDefaults() {
   config.parseModelId = config.parseModelId || config.qModelId || '';
   config.wPrompt = config.wPrompt || DEFAULT_W_PROMPT;
   if (config.autoCloudSyncAfterTest === undefined) config.autoCloudSyncAfterTest = true;
+  if (config.autoCloudDownloadOnStart === undefined) config.autoCloudDownloadOnStart = true;
   if (!config.noteLibraryId || !libraries.some(lib => lib.id === config.noteLibraryId)) config.noteLibraryId = 'notes';
 }
 
@@ -1668,12 +1680,21 @@ function cloudSyncTimeStorageKey(repoPath) {
   return `vocab_cloud_sync_time_v1:${repoPath}`;
 }
 
+function hasMeaningfulLocalData() {
+  if (libraries.some(lib => Array.isArray(lib.words) && lib.words.length > 0)) return true;
+  if (libraries.some(lib => Array.isArray(lib.sourceWords) && lib.sourceWords.length > 0)) return true;
+  return libraries.some(lib => !['default', 'notes'].includes(lib.id));
+}
+
 function getCloudSaveState() {
   const repoPath = normalizeGithubRepoPath(config.gistId || '');
   const configured = !!(repoPath && config.githubToken);
   if (!configured) return { state:'unconfigured', title:'⚪ 未配置云端', detail:'请先在设置中填写 GitHub 仓库和 Token。' };
   if (cloudConflict) return { state:'conflict', title:'⚠️ 云端冲突，修改尚未保存', detail:cloudLastError || '云端版本与本机记录不同，请先下载或手动确认覆盖。' };
+  if (cloudDownloadInProgress) return { state:'downloading', title:'⬇️ 正在下载云端更新', detail:'正在安全载入 GitHub 中的最新词库和复习进度。' };
+  if (cloudCheckInProgress) return { state:'checking', title:'🔄 正在检查云端', detail:'正在比较本机与 GitHub 中的版本。' };
   if (cloudUploadInProgress) return { state:'uploading', title:cloudUploadPending ? '🔄 正在上传，仍有新修改' : '🔄 正在保存到云端', detail:cloudUploadPending ? '当前上传完成后会自动再次上传最新修改。' : '正在写入 GitHub 的 vocab_data.json。' };
+  if (cloudLastError && !cloudDirty) return { state:'error', title:'❌ 云端同步检查失败', detail:cloudLastError };
   const knownSha = localStorage.getItem(cloudShaStorageKey(repoPath)) || '';
   const lastSyncedAt = localStorage.getItem(cloudSyncTimeStorageKey(repoPath)) || '';
   if (cloudDirty) {
@@ -1895,68 +1916,150 @@ async function performCloudUpload(mode, reason) {
   }
 }
 
+async function fetchCloudMetadata() {
+  const { repoPath, githubToken } = getGithubCloudConfig();
+  const cloudUrl = `https://api.github.com/repos/${repoPath}/contents/vocab_data.json`;
+  const resp = await fetchWithTimeout(cloudUrl + '?t=' + Date.now(), {
+    headers: { 'Accept':'application/vnd.github+json', 'Authorization':`Bearer ${githubToken}` }
+  }, 30000);
+  if (resp.status === 404) return { exists:false, sha:'', repoPath, githubToken, cloudUrl };
+  if (!resp.ok) throw new Error(`读取云端版本失败: HTTP ${resp.status}`);
+  const meta = await resp.json();
+  return { exists:true, sha:meta.sha || '', repoPath, githubToken, cloudUrl };
+}
+
+async function fetchCloudRecord(metadata) {
+  const resp = await fetchWithTimeout(metadata.cloudUrl + '?raw=' + Date.now(), {
+    method:'GET',
+    headers:{ 'Accept':'application/vnd.github.v3.raw', 'Authorization':`Bearer ${metadata.githubToken}` }
+  }, 45000);
+  if (!resp.ok) throw new Error(`下载云端数据失败: HTTP ${resp.status}`);
+  const recordStr = await resp.text();
+  if (!recordStr) throw new Error('云端仓库数据为空');
+  const record = JSON.parse(recordStr);
+  if (!record || (!Array.isArray(record.words) && !Array.isArray(record.libraries))) throw new Error('云端数据格式错误');
+  return record;
+}
+
+function applyCloudRecord(record, metadata) {
+  const secrets = {
+    apiKey:config.apiKey || '', qApiKey:config.qApiKey || '', parseApiKey:config.parseApiKey || '',
+    gistId:config.gistId || '', githubToken:config.githubToken || ''
+  };
+  libraries = Array.isArray(record.libraries) ? record.libraries : [];
+  currentLibraryId = record.currentLibraryId || 'default';
+  words = Array.isArray(record.words) ? record.words : [];
+  if (record.config) config = { ...config, ...record.config, ...secrets };
+  normalizeLibraries(words);
+  normalizeWords();
+  ensureConfigDefaults();
+  localRevision = Math.max(0, parseInt(record.revision, 10) || 0);
+  cloudDirty = false;
+  cloudConflict = false;
+  cloudLastError = '';
+  cloudRetryAttempt = 0;
+  clearCloudAutoSaveTimers(true);
+  applyUISize(config.uiSize || 'm');
+  renderLibrarySelects();
+  lastSaveTime = record.lastSaveTime || fmtNow();
+  if (metadata.sha) localStorage.setItem(cloudShaStorageKey(metadata.repoPath), metadata.sha);
+  localStorage.setItem(cloudSyncTimeStorageKey(metadata.repoPath), fmtNow());
+  markClean();
+  renderWords();
+}
+
+function downloadCloudSnapshot(options = {}) {
+  if (cloudDownloadPromise) return cloudDownloadPromise;
+  const mode = options.mode === 'auto' ? 'auto' : 'manual';
+  cloudDownloadPromise = (async () => {
+    const gProg = document.getElementById('globalProgress'), gText = document.getElementById('globalProgressText');
+    cloudDownloadInProgress = true;
+    renderCloudSaveState();
+    gProg.style.display = 'block';
+    gText.textContent = mode === 'auto' ? '发现云端更新，正在自动下载...' : '正在从 GitHub 仓库下载...';
+    try {
+      const metadata = options.metadata || await fetchCloudMetadata();
+      if (!metadata.exists) throw new Error('云端不存在 vocab_data.json，请先从有数据的设备上传');
+      const record = await fetchCloudRecord(metadata);
+      applyCloudRecord(record, metadata);
+      const total = libraries.reduce((n, lib) => n + (Array.isArray(lib.words) ? lib.words.length : 0), 0);
+      toast(mode === 'auto' ? `✅ 已自动获取云端更新（${total} 个词条）` : '✅ 从仓库下载成功');
+      log(`${mode === 'auto' ? '自动' : '手动'}下载云端数据成功 (${options.reason || 'manual'}, ${total} 个词条)`);
+      if (mode === 'manual') closeModal('cloudSyncModal');
+      return true;
+    } catch(e) {
+      const msg = cloudFetchErrorMessage(e);
+      cloudLastError = msg;
+      toast(`❌ ${mode === 'auto' ? '自动下载' : '下载'}失败: ${msg}`);
+      log(`${mode === 'auto' ? '自动' : '手动'}下载失败: ${msg}`);
+      return false;
+    } finally {
+      cloudDownloadInProgress = false;
+      cloudDownloadPromise = null;
+      renderCloudSaveState();
+      if(TaskManager.processing.length===0 && TaskManager.queue.length===0) gProg.style.display = 'none'; else TaskManager.render();
+    }
+  })();
+  return cloudDownloadPromise;
+}
+
+function decideCloudUpdateAction(knownSha, remoteSha, hasLocalChanges, hasLocalData) {
+  if (knownSha && knownSha === remoteSha) return 'current';
+  if (hasLocalChanges || (!knownSha && hasLocalData)) return 'conflict';
+  return 'download';
+}
+
+async function checkCloudForUpdates(reason = 'background', options = {}) {
+  if (cloudCheckPromise) return cloudCheckPromise;
+  if (!options.force && !config.autoCloudDownloadOnStart) return false;
+  if (!config.gistId || !config.githubToken || !navigator.onLine) { renderCloudSaveState(); return false; }
+  if (!options.force && Date.now() - cloudLastCheckAt < CLOUD_CHECK_MIN_INTERVAL_MS) return false;
+  cloudCheckPromise = (async () => {
+    cloudCheckInProgress = true;
+    cloudLastCheckAt = Date.now();
+    renderCloudSaveState();
+    try {
+      const metadata = await fetchCloudMetadata();
+      if (!metadata.exists) { log(`云端检查 (${reason})：尚无 vocab_data.json`); return false; }
+      const knownSha = localStorage.getItem(cloudShaStorageKey(metadata.repoPath)) || '';
+      const action = decideCloudUpdateAction(knownSha, metadata.sha, cloudDirty, hasMeaningfulLocalData());
+      if (action === 'current') {
+        cloudConflict = false;
+        cloudLastError = '';
+        log(`云端检查 (${reason})：当前已是最新版本`);
+        return true;
+      }
+      if (action === 'conflict') {
+        cloudConflict = true;
+        cloudLastError = cloudDirty
+          ? '本地有未上传修改，云端也已更新；已停止自动覆盖，请手动选择下载或上传。'
+          : '本机已有数据但没有同步记录；为防止覆盖，已停止自动下载，请手动确认。';
+        log(`云端检查 (${reason})：检测到冲突，未自动下载`);
+        toast('⚠️ 检测到本地与云端版本冲突');
+        return false;
+      }
+      cloudCheckInProgress = false;
+      renderCloudSaveState();
+      return await downloadCloudSnapshot({ mode:'auto', metadata, reason });
+    } catch(e) {
+      cloudLastError = cloudFetchErrorMessage(e);
+      log(`云端检查失败 (${reason}): ${cloudLastError}`);
+      renderCloudSaveState();
+      return false;
+    } finally {
+      cloudCheckInProgress = false;
+      cloudCheckPromise = null;
+      renderCloudSaveState();
+    }
+  })();
+  return cloudCheckPromise;
+}
+
 async function doCloudDownload() {
   try { getGithubCloudConfig(); } catch(e) { return toast('❌ 下载失败: ' + cloudFetchErrorMessage(e)); }
-  if(!confirm('下载将覆盖本地所有词汇和设置，确定继续吗？')) return;
-  const gProg = document.getElementById('globalProgress'), gText = document.getElementById('globalProgressText');
-  gProg.style.display = 'block'; gText.textContent = '正在从 GitHub 仓库下载...';
-  try {
-      const { repoPath, githubToken } = getGithubCloudConfig();
-      const cloudUrl = `https://api.github.com/repos/${repoPath}/contents/vocab_data.json`;
-      let downloadedSha = '';
-      const metaResp = await fetchWithTimeout(cloudUrl + '?t=' + Date.now(), { headers: { 'Authorization': `Bearer ${githubToken}` } }, 30000);
-      if (metaResp.ok) {
-          const meta = await metaResp.json();
-          downloadedSha = meta.sha || '';
-      }
-      // 突破1MB限制的神奇请求头：application/vnd.github.v3.raw，直接返回纯文本
-      const resp = await fetchWithTimeout(cloudUrl, {
-          method: 'GET',
-          headers: { 
-              'Accept': 'application/vnd.github.v3.raw',
-              'Authorization': `Bearer ${githubToken}`
-          }
-      }, 45000);
-      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const recordStr = await resp.text();
-      if(!recordStr) throw new Error('云端仓库数据为空');
-      const record = JSON.parse(recordStr);
-      if(!record || (!record.words && !record.libraries)) throw new Error('云端数据格式错误');
-      
-      libraries = Array.isArray(record.libraries) ? record.libraries : [];
-      currentLibraryId = record.currentLibraryId || 'default';
-      words = Array.isArray(record.words) ? record.words : [];
-      if(record.config) {
-          let c = record.config;
-          c.apiKey = config.apiKey; c.qApiKey = config.qApiKey;
-          c.parseApiKey = config.parseApiKey;
-          c.gistId = config.gistId; c.githubToken = config.githubToken;
-          config = { ...config, ...c };
-      }
-      normalizeLibraries(words);
-      normalizeWords();
-      ensureConfigDefaults();
-      localRevision = Math.max(localRevision + 1, parseInt(record.revision, 10) || 0);
-      cloudDirty = false;
-      cloudConflict = false;
-      cloudLastError = '';
-      cloudRetryAttempt = 0;
-      clearCloudAutoSaveTimers(true);
-      applyUISize(config.uiSize || 'm');
-      renderLibrarySelects();
-      lastSaveTime = record.lastSaveTime || fmtNow();
-      if (downloadedSha) localStorage.setItem(cloudShaStorageKey(repoPath), downloadedSha);
-      localStorage.setItem(cloudSyncTimeStorageKey(repoPath), fmtNow());
-      markClean(); renderWords();
-      toast('✅ 从仓库下载成功'); log(`从云端下载了 ${libraries.reduce((n, lib)=>n + lib.words.length, 0)} 个词条`);
-      closeModal('cloudSyncModal');
-  } catch(e) {
-      const msg = cloudFetchErrorMessage(e);
-      toast('❌ 下载失败: ' + msg); log('下载失败: ' + msg);
-      renderCloudSaveState();
-  } finally {
-       if(TaskManager.processing.length===0 && TaskManager.queue.length===0) gProg.style.display = 'none'; else TaskManager.render();
-  }
+  if (!confirm('下载将覆盖本地所有词汇和设置，确定继续吗？')) return;
+  cloudConflict = false;
+  await downloadCloudSnapshot({ mode:'manual', reason:'manual-confirmed' });
 }
 
 // =====================================================
@@ -3328,6 +3431,7 @@ function openSettings() {
   syncUI('cfgRForceRewrite','frTrack','frKnob', config.reciteForceRewrite);
   syncUI('cfgRAnsPronounce','rapTrack','rapKnob', config.recitePronounceAns);
   syncUI('cfgRAutoCloud','racTrack','racKnob', config.autoCloudSyncAfterTest);
+  syncUI('cfgAutoCloudDownload','acdTrack','acdKnob', config.autoCloudDownloadOnStart);
   
   syncUI('cfgRShowMeaning','smTrack','smKnob', config.reciteShowMeaning);
   syncUI('cfgRShowPhonetic','spTrack','spKnob', config.reciteShowPhonetic);
@@ -3344,6 +3448,7 @@ function openSettings() {
 function saveSettings() {
   const previousRepoPath = normalizeGithubRepoPath(config.gistId || '');
   const previousGithubToken = config.githubToken || '';
+  const hadLocalDataBeforeSave = hasMeaningfulLocalData();
   config.uiSize=document.getElementById('cfgUiSize').value;
   config.showBadgeStar=document.getElementById('cfgBdStar').checked;
   config.showBadgeLevel=document.getElementById('cfgBdLevel').checked;
@@ -3393,6 +3498,7 @@ function saveSettings() {
   config.reciteForceRewrite = document.getElementById('cfgRForceRewrite').checked;
   config.recitePronounceAns = document.getElementById('cfgRAnsPronounce').checked;
   config.autoCloudSyncAfterTest = document.getElementById('cfgRAutoCloud').checked;
+  config.autoCloudDownloadOnStart = document.getElementById('cfgAutoCloudDownload').checked;
   
   config.reciteShowMeaning = document.getElementById('cfgRShowMeaning').checked;
   config.reciteShowPhonetic = document.getElementById('cfgRShowPhonetic').checked;
@@ -3404,7 +3510,25 @@ function saveSettings() {
   config.globalMemo = document.getElementById('cfgMemo').value;
   
   applyUISize(config.uiSize);
-  TaskManager.render(); markDirty(); renderWords(); toast('已保存');
+  TaskManager.render();
+  const cloudConnectionChanged = previousRepoPath !== config.gistId || previousGithubToken !== config.githubToken;
+  const shouldBootstrapFromCloud = cloudConnectionChanged && !hadLocalDataBeforeSave && config.autoCloudDownloadOnStart && config.gistId && config.githubToken;
+  if (shouldBootstrapFromCloud) {
+    dirty = false;
+    cloudDirty = false;
+    saveLocalCache();
+    renderWords();
+    renderCloudSaveState();
+    toast('设置已保存，正在检查云端数据');
+    setTimeout(() => checkCloudForUpdates('new-device-connected', { force:true }), 0);
+  } else {
+    markDirty();
+    renderWords();
+    toast('已保存');
+    if (cloudConnectionChanged && config.autoCloudDownloadOnStart && config.gistId && config.githubToken) {
+      setTimeout(() => checkCloudForUpdates('cloud-config-changed', { force:true }), 0);
+    }
+  }
 }
 function toggleVis(inputId, btn) { const inp = document.getElementById(inputId); if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🔒'; } else { inp.type = 'password'; btn.textContent = '👁'; } }
 function syncUI(id, trackId, knobId, forceVal) { 
@@ -3633,14 +3757,16 @@ document.addEventListener('keydown',e=>{
     } 
 });
 document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.key==='s') { e.preventDefault(); saveFile(); } });
-window.addEventListener('online', () => {
+window.addEventListener('online', async () => {
   cloudLastError = '';
   renderCloudSaveState();
+  await checkCloudForUpdates('network-restored', { force:true });
   if (cloudDirty) scheduleCloudAutoSave('network-restored', { immediate:true });
 });
 window.addEventListener('offline', renderCloudSaveState);
-document.addEventListener('visibilitychange', () => {
+document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'hidden' && cloudDirty) scheduleCloudAutoSave('page-hidden', { immediate:true });
+  else if (document.visibilityState === 'visible') await checkCloudForUpdates('page-visible');
   else renderCloudSaveState();
 });
 
@@ -3675,7 +3801,8 @@ renderCloudSaveState();
 // ==============================================================================
 
 updateClock(); setInterval(updateClock, 1000); setInterval(refreshReviewCountdowns, 30000); log('系统启动完成，API测试与日志模块已加载');
-setTimeout(() => {
+setTimeout(async () => {
+  await checkCloudForUpdates('startup');
   if (cloudDirty) scheduleCloudAutoSave('startup-retry', { immediate:true });
   else renderCloudSaveState();
 }, 800);
