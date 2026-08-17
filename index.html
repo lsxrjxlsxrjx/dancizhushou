@@ -530,7 +530,8 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
     </div>
 
     <div id="st-gen" class="tab-content active">
-      <div style="font-size:.9rem;font-weight:700;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--border)">🎨 界面与显示设置</div>
+      <div style="font-size:.9rem;font-weight:700;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--border)">📱 本机显示与声音</div>
+      <div class="ih" style="margin-top:-4px">以下设置只保存在当前浏览器，不上传云端；新设备使用默认值。</div>
       <div class="sg">
         <label>UI 元素与按钮大小</label>
         <select id="cfgUiSize">
@@ -550,6 +551,14 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100v
           <label style="display:inline-flex;align-items:center;font-weight:normal"><input type="checkbox" id="cfgBdNote" style="width:auto;margin-right:4px"> 笔记</label>
           <label style="display:inline-flex;align-items:center;font-weight:normal"><input type="checkbox" id="cfgBdTimeLeft" style="width:auto;margin-right:4px"> 距待背时间</label>
         </div>
+      </div>
+      <div class="sg" style="margin-bottom:24px">
+        <label>单词发音音量：<span id="cfgVolumeLbl">100%</span></label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="range" id="cfgVolume" min="0" max="200" step="10" value="100" oninput="updateVolumeLabel(this.value)" style="flex:1;padding:0;border:none">
+          <button type="button" onclick="previewVolume()" style="padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:var(--bg);cursor:pointer;white-space:nowrap">🔊 试听</button>
+        </div>
+        <div class="ih" id="cfgVolumeHint" style="margin-bottom:0">100% 为浏览器正常最大音量；超过 100% 将尝试软件增强。</div>
       </div>
 
       <div style="font-size:.9rem;font-weight:700;color:var(--pl);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--pl)">📥 导入 API（非流式）</div>
@@ -809,6 +818,13 @@ var writingExecId = 0;
 var currentWordPopupId = 0;
 var lastWordPopupTime = 0; // 防抖时间锁
 var LOCAL_CACHE_KEY = 'vocab_local_cache_v1';
+var DEVICE_PREFS_KEY = 'vocab_device_prefs_v1';
+var DEFAULT_DEVICE_PREFS = Object.freeze({
+  uiSize:'m', volumePercent:100, showBadgeStar:true, showBadgeLevel:true,
+  showBadgeReview:true, showBadgeWrong:true, showBadgeNote:true, showBadgeTimeLeft:false
+});
+var devicePrefs = { ...DEFAULT_DEVICE_PREFS };
+var legacyDevicePrefsCandidate = null;
 var currentFuSent = '';
 var localRevision = 0;
 var localSaveFailed = false;
@@ -844,6 +860,64 @@ var fState = { today: false, wrong: false, none: false, stMin: 0, stMax: 5, ebMi
 function applyUISize(size) {
   const map = { 'xs': 0.75, 's': 0.85, 'm': 1, 'l': 1.15 };
   document.documentElement.style.setProperty('--us', map[size] || 1);
+}
+
+function normalizeDevicePrefs(raw) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const uiSize = ['xs','s','m','l'].includes(source.uiSize) ? source.uiSize : DEFAULT_DEVICE_PREFS.uiSize;
+  const volume = Number(source.volumePercent);
+  return {
+    uiSize,
+    volumePercent:Number.isFinite(volume) ? Math.max(0, Math.min(200, Math.round(volume / 10) * 10)) : DEFAULT_DEVICE_PREFS.volumePercent,
+    showBadgeStar:source.showBadgeStar !== undefined ? !!source.showBadgeStar : DEFAULT_DEVICE_PREFS.showBadgeStar,
+    showBadgeLevel:source.showBadgeLevel !== undefined ? !!source.showBadgeLevel : DEFAULT_DEVICE_PREFS.showBadgeLevel,
+    showBadgeReview:source.showBadgeReview !== undefined ? !!source.showBadgeReview : DEFAULT_DEVICE_PREFS.showBadgeReview,
+    showBadgeWrong:source.showBadgeWrong !== undefined ? !!source.showBadgeWrong : DEFAULT_DEVICE_PREFS.showBadgeWrong,
+    showBadgeNote:source.showBadgeNote !== undefined ? !!source.showBadgeNote : DEFAULT_DEVICE_PREFS.showBadgeNote,
+    showBadgeTimeLeft:source.showBadgeTimeLeft !== undefined ? !!source.showBadgeTimeLeft : DEFAULT_DEVICE_PREFS.showBadgeTimeLeft
+  };
+}
+
+function legacyDevicePrefsFromConfig(source) {
+  if (!source || typeof source !== 'object') return null;
+  const keys = ['uiSize','showBadgeStar','showBadgeLevel','showBadgeReview','showBadgeWrong','showBadgeNote','showBadgeTimeLeft'];
+  if (!keys.some(key => Object.prototype.hasOwnProperty.call(source, key))) return null;
+  return normalizeDevicePrefs({ ...DEFAULT_DEVICE_PREFS, ...source });
+}
+
+function removeLegacyDeviceConfigFields(target) {
+  if (!target || typeof target !== 'object') return target;
+  ['uiSize','volumePercent','pronunciationVolume','showBadgeStar','showBadgeLevel','showBadgeReview','showBadgeWrong','showBadgeNote','showBadgeTimeLeft'].forEach(key => delete target[key]);
+  return target;
+}
+
+function loadDevicePrefs(legacyConfig, allowLegacyMigration = false) {
+  try {
+    const raw = localStorage.getItem(DEVICE_PREFS_KEY);
+    if (raw) devicePrefs = normalizeDevicePrefs(JSON.parse(raw));
+    else {
+      const migrated = allowLegacyMigration ? legacyDevicePrefsFromConfig(legacyConfig) : null;
+      devicePrefs = migrated || { ...DEFAULT_DEVICE_PREFS };
+      localStorage.setItem(DEVICE_PREFS_KEY, JSON.stringify(devicePrefs));
+      if (migrated) log('已将原界面显示设置迁移为本机专属设置');
+    }
+  } catch(e) {
+    devicePrefs = { ...DEFAULT_DEVICE_PREFS };
+    log('读取本机显示与声音设置失败，已使用默认值: ' + e.message);
+  }
+  applyUISize(devicePrefs.uiSize);
+}
+
+function saveDevicePrefs() {
+  try {
+    devicePrefs = normalizeDevicePrefs(devicePrefs);
+    localStorage.setItem(DEVICE_PREFS_KEY, JSON.stringify(devicePrefs));
+    return true;
+  } catch(e) {
+    toast('❌ 本机显示与声音设置保存失败');
+    log('本机设置保存失败: ' + e.message);
+    return false;
+  }
 }
 
 function normalizeLibraryId(id) {
@@ -1213,13 +1287,6 @@ function loadEmbedded() {
       reciteForceRewrite: d.config?.reciteForceRewrite !== false, recitePronounceAns: d.config?.recitePronounceAns !== false, globalMemo: d.config?.globalMemo || "",
       autoCloudSyncAfterTest: d.config?.autoCloudSyncAfterTest !== false,
       autoCloudDownloadOnStart: d.config?.autoCloudDownloadOnStart !== false,
-      uiSize: d.config?.uiSize || 'm',
-      showBadgeStar: d.config?.showBadgeStar !== false,
-      showBadgeLevel: d.config?.showBadgeLevel !== false,
-      showBadgeReview: d.config?.showBadgeReview !== false,
-      showBadgeWrong: d.config?.showBadgeWrong !== false,
-      showBadgeNote: d.config?.showBadgeNote !== false,
-      showBadgeTimeLeft: !!d.config?.showBadgeTimeLeft,
       ansShowMeaning: d.config?.ansShowMeaning !== false,
       ansShowPhrases: d.config?.ansShowPhrases !== false,
       ansShowInflections: d.config?.ansShowInflections !== false,
@@ -1239,7 +1306,6 @@ function loadEmbedded() {
     ensureConfigDefaults();
     normalizeLibraries(words);
     normalizeWords();
-    applyUISize(config.uiSize);
     renderLibrarySelects();
     lastSaveTime = d.lastSaveTime || '';
   } catch(e) { log('读取嵌入数据失败: '+e.message); }
@@ -1450,12 +1516,13 @@ function loadLocalCache() {
     currentLibraryId = cached.currentLibraryId || currentLibraryId || 'default';
     words = Array.isArray(cached.words) ? cached.words : [];
     if(cached.config) config = { ...config, ...cached.config, ...secrets };
+    legacyDevicePrefsCandidate = cached.config && typeof cached.config === 'object' ? cached.config : null;
+    removeLegacyDeviceConfigFields(config);
     localRevision = Math.max(0, parseInt(cached.localRevision, 10) || 0);
     cloudDirty = !!cached.cloudDirty;
     normalizeLibraries(words);
     normalizeWords();
     ensureConfigDefaults();
-    applyUISize(config.uiSize || 'm');
     renderLibrarySelects();
     lastSaveTime = cached.lastSaveTime || lastSaveTime || '';
     log(`已从本地缓存恢复「${getCurrentLibrary().name}」${words.length} 个词条`);
@@ -1579,6 +1646,7 @@ function clearLog() { logs = []; document.getElementById('logBox').textContent =
 // =====================================================
 function getSafeConfig() {
   const sc = { ...config };
+  removeLegacyDeviceConfigFields(sc);
   sc.apiKey = '';
   sc.qApiKey = '';
   sc.parseApiKey = '';
@@ -1949,7 +2017,8 @@ function applyCloudRecord(record, metadata) {
   libraries = Array.isArray(record.libraries) ? record.libraries : [];
   currentLibraryId = record.currentLibraryId || 'default';
   words = Array.isArray(record.words) ? record.words : [];
-  if (record.config) config = { ...config, ...record.config, ...secrets };
+  if (record.config) config = { ...config, ...removeLegacyDeviceConfigFields({ ...record.config }), ...secrets };
+  removeLegacyDeviceConfigFields(config);
   normalizeLibraries(words);
   normalizeWords();
   ensureConfigDefaults();
@@ -1959,7 +2028,7 @@ function applyCloudRecord(record, metadata) {
   cloudLastError = '';
   cloudRetryAttempt = 0;
   clearCloudAutoSaveTimers(true);
-  applyUISize(config.uiSize || 'm');
+  applyUISize(devicePrefs.uiSize);
   renderLibrarySelects();
   lastSaveTime = record.lastSaveTime || fmtNow();
   if (metadata.sha) localStorage.setItem(cloudShaStorageKey(metadata.repoPath), metadata.sha);
@@ -2977,26 +3046,26 @@ function renderWords() {
     if (showDay && collapsedDays.has(w.date)) continue;
     
     let badges = '';
-    if (config.showBadgeLevel) {
+    if (devicePrefs.showBadgeLevel) {
       if (w.ebLevel === undefined || w.ebLevel === null || w.ebLevel === -1) badges += `<span class="bdg bdg-l0" style="background:#eee;color:#666">❓无周期</span>`;
       else if (w.ebLevel >= 7) badges += `<span class="bdg bdg-gr">🎓 掌握</span>`;
       else if (w.ebLevel === 0) badges += `<span class="bdg bdg-l0">L0 新词</span>`;
       else badges += `<span class="bdg bdg-lx">L${w.ebLevel}</span>`;
     }
-    if (config.showBadgeReview && isReviewDue(w, nowMs)) badges += `<span class="bdg bdg-td">⏳待背</span>`;
+    if (devicePrefs.showBadgeReview && isReviewDue(w, nowMs)) badges += `<span class="bdg bdg-td">⏳待背</span>`;
     
     // 距离待背时间显示
-    if (config.showBadgeTimeLeft && w.ebLevel !== undefined && w.ebLevel < 7) {
+    if (devicePrefs.showBadgeTimeLeft && w.ebLevel !== undefined && w.ebLevel < 7) {
         const reviewAt = getNextReviewMs(w);
         if (Number.isFinite(reviewAt) && reviewAt > nowMs) {
             badges += `<span class="bdg review-countdown" data-review-at="${reviewAt}" title="下次复习：${esc(formatLocalDateTime(reviewAt))}" style="background:#e0f7fa;color:#00838f;border:1px solid #b2ebf2">距待背:${formatReviewCountdown(reviewAt - nowMs)}</span>`;
         }
     }
 
-    if (config.showBadgeWrong && w.wrongCount > 0) badges += `<span class="bdg bdg-wr">🩸错(${w.wrongCount})</span>`;
-    if (config.showBadgeNote && w.note) badges += `<span class="bdg" style="background:#fff9c4;color:#f57f17;border:1px solid #ffe082">📝笔记</span>`;
+    if (devicePrefs.showBadgeWrong && w.wrongCount > 0) badges += `<span class="bdg bdg-wr">🩸错(${w.wrongCount})</span>`;
+    if (devicePrefs.showBadgeNote && w.note) badges += `<span class="bdg" style="background:#fff9c4;color:#f57f17;border:1px solid #ffe082">📝笔记</span>`;
 
-    const stars = config.showBadgeStar ? [1,2,3,4,5].map(i=>`<span class="st ${i<=w.stars?'f':''}" onclick="setStar('${w.id}',${i},event)">★</span>`).join('') : '';
+    const stars = devicePrefs.showBadgeStar ? [1,2,3,4,5].map(i=>`<span class="st ${i<=w.stars?'f':''}" onclick="setStar('${w.id}',${i},event)">★</span>`).join('') : '';
     const errTag = (w.status==='error') ? '<span style="font-size:calc(.7rem * var(--us));color:#fff;background:var(--red);padding:calc(1px * var(--us)) calc(6px * var(--us));border-radius:4px;margin-left:8px;vertical-align:middle">调用失败</span>' : '';
     const meaning = w.annotation?.meaning || '';
     let displayText = displayMode === 'word' ? esc(w.word) : displayMode === 'meaning' ? (meaning?esc(meaning):'<i style="color:var(--muted)">暂无释义</i>') : `${esc(w.word)} <span style="color:var(--muted);font-size:.85em;margin-left:10px">${esc(meaning)}</span>`;
@@ -3394,13 +3463,15 @@ function testNextBtn() { testIndex++; nextTestCard(); }
 // =====================================================
 function switchTab(tabId, btn) { document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active')); btn.classList.add('active'); document.getElementById(tabId).classList.add('active'); }
 function openSettings() {
-  document.getElementById('cfgUiSize').value=config.uiSize || 'm';
-  document.getElementById('cfgBdStar').checked=config.showBadgeStar;
-  document.getElementById('cfgBdLevel').checked=config.showBadgeLevel;
-  document.getElementById('cfgBdRev').checked=config.showBadgeReview;
-  document.getElementById('cfgBdWr').checked=config.showBadgeWrong;
-  document.getElementById('cfgBdNote').checked=config.showBadgeNote;
-  document.getElementById('cfgBdTimeLeft').checked=config.showBadgeTimeLeft;
+  document.getElementById('cfgUiSize').value=devicePrefs.uiSize;
+  document.getElementById('cfgBdStar').checked=devicePrefs.showBadgeStar;
+  document.getElementById('cfgBdLevel').checked=devicePrefs.showBadgeLevel;
+  document.getElementById('cfgBdRev').checked=devicePrefs.showBadgeReview;
+  document.getElementById('cfgBdWr').checked=devicePrefs.showBadgeWrong;
+  document.getElementById('cfgBdNote').checked=devicePrefs.showBadgeNote;
+  document.getElementById('cfgBdTimeLeft').checked=devicePrefs.showBadgeTimeLeft;
+  document.getElementById('cfgVolume').value=devicePrefs.volumePercent;
+  updateVolumeLabel(devicePrefs.volumePercent);
 
   document.getElementById('cfgAnsMean').checked=config.ansShowMeaning;
   document.getElementById('cfgAnsPhr').checked=config.ansShowPhrases;
@@ -3446,16 +3517,19 @@ function openSettings() {
   TaskManager.render(); document.getElementById('settingsModal').classList.add('show'); 
 }
 function saveSettings() {
+  const syncedConfigBefore = JSON.stringify(getSafeConfig());
   const previousRepoPath = normalizeGithubRepoPath(config.gistId || '');
   const previousGithubToken = config.githubToken || '';
   const hadLocalDataBeforeSave = hasMeaningfulLocalData();
-  config.uiSize=document.getElementById('cfgUiSize').value;
-  config.showBadgeStar=document.getElementById('cfgBdStar').checked;
-  config.showBadgeLevel=document.getElementById('cfgBdLevel').checked;
-  config.showBadgeReview=document.getElementById('cfgBdRev').checked;
-  config.showBadgeWrong=document.getElementById('cfgBdWr').checked;
-  config.showBadgeNote=document.getElementById('cfgBdNote').checked;
-  config.showBadgeTimeLeft=document.getElementById('cfgBdTimeLeft').checked;
+  devicePrefs.uiSize=document.getElementById('cfgUiSize').value;
+  devicePrefs.showBadgeStar=document.getElementById('cfgBdStar').checked;
+  devicePrefs.showBadgeLevel=document.getElementById('cfgBdLevel').checked;
+  devicePrefs.showBadgeReview=document.getElementById('cfgBdRev').checked;
+  devicePrefs.showBadgeWrong=document.getElementById('cfgBdWr').checked;
+  devicePrefs.showBadgeNote=document.getElementById('cfgBdNote').checked;
+  devicePrefs.showBadgeTimeLeft=document.getElementById('cfgBdTimeLeft').checked;
+  devicePrefs.volumePercent=parseInt(document.getElementById('cfgVolume').value, 10) || 0;
+  saveDevicePrefs();
 
   config.ansShowMeaning=document.getElementById('cfgAnsMean').checked;
   config.ansShowPhrases=document.getElementById('cfgAnsPhr').checked;
@@ -3509,8 +3583,9 @@ function saveSettings() {
   config.recitePunish = document.getElementById('cfgRPunish').value;
   config.globalMemo = document.getElementById('cfgMemo').value;
   
-  applyUISize(config.uiSize);
+  applyUISize(devicePrefs.uiSize);
   TaskManager.render();
+  const syncedConfigChanged = syncedConfigBefore !== JSON.stringify(getSafeConfig());
   const cloudConnectionChanged = previousRepoPath !== config.gistId || previousGithubToken !== config.githubToken;
   const shouldBootstrapFromCloud = cloudConnectionChanged && !hadLocalDataBeforeSave && config.autoCloudDownloadOnStart && config.gistId && config.githubToken;
   if (shouldBootstrapFromCloud) {
@@ -3522,9 +3597,11 @@ function saveSettings() {
     toast('设置已保存，正在检查云端数据');
     setTimeout(() => checkCloudForUpdates('new-device-connected', { force:true }), 0);
   } else {
-    markDirty();
+    if (syncedConfigChanged) markDirty();
+    else saveLocalCache();
     renderWords();
-    toast('已保存');
+    renderCloudSaveState();
+    toast(syncedConfigChanged ? '已保存' : '本机设置已保存（不上传云端）');
     if (cloudConnectionChanged && config.autoCloudDownloadOnStart && config.gistId && config.githubToken) {
       setTimeout(() => checkCloudForUpdates('cloud-config-changed', { force:true }), 0);
     }
@@ -3678,7 +3755,7 @@ function handleJsonImport(e) {
       renderLibrarySelects();
       
       if (data.config && typeof data.config === 'object' && confirm('是否导入设置？')) {
-        let c = { ...data.config };
+        let c = removeLegacyDeviceConfigFields({ ...data.config });
         // 防覆盖，防止导入空密码把本地密码抹掉
         c.apiKey = config.apiKey;
         c.qApiKey = config.qApiKey;
@@ -3689,8 +3766,8 @@ function handleJsonImport(e) {
         config = { ...config, ...c };
         ensureConfigDefaults();
         
-        // 关键修复：导入后立即刷新 UI 状态
-        applyUISize(config.uiSize || 'm');
+        // 本机显示与声音设置不随 JSON 导入
+        applyUISize(devicePrefs.uiSize);
         
         if (document.getElementById('settingsModal').classList.contains('show')) {
           openSettings(); 
@@ -3713,17 +3790,96 @@ function handleJsonImport(e) {
 function clearAll() { if(!confirm(`确定清空当前词库「${getCurrentLibrary().name}」的所有数据？`)) return; words=[]; syncCurrentLibraryWords(); markDirty(); renderWords(); toast('已清空当前词库'); log(`清空了词库: ${getCurrentLibrary().name}`); }
 
 var currentAudio = null;
+var currentAudioSource = null;
+var pronunciationAudioContext = null;
+var audioPlaybackToken = 0;
+var boostFallbackNotified = false;
 function playWord(id) { const e = words.find(w=>w.id===id); if (e) speakDirect(e.word, 2); }
 function speak(id, type) { const e = words.find(w=>w.id===id); if (e) speakDirect(e.word, type); }
-function speakDirect(word, type) {
-  if (currentAudio) { currentAudio.pause(); currentAudio = null; } window.speechSynthesis && window.speechSynthesis.cancel();
-  const audio = new Audio(`https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=${type}`); currentAudio = audio; audio.onended = () => { currentAudio = null; }; audio.onerror = () => { currentAudio = null; speakFallback(word, type); }; audio.play().catch(() => { currentAudio = null; speakFallback(word, type); });
+function stopCurrentSpeech() {
+  audioPlaybackToken++;
+  if (currentAudio) { try { currentAudio.pause(); } catch(e) {} currentAudio = null; }
+  if (currentAudioSource) { try { currentAudioSource.stop(); } catch(e) {} currentAudioSource = null; }
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
 }
-function speakFallback(word, type) {
-  if (!window.speechSynthesis) return; const utter = new SpeechSynthesisUtterance(word); utter.lang = type === 1 ? 'en-GB' : 'en-US'; utter.rate = 0.9;
+function pronunciationUrl(word, type) { return `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=${type}`; }
+async function boostedPronunciationUrl(word, type) {
+  const page = word.trim().toLowerCase();
+  if (!page || page.length > 100) throw new Error('不支持增强该文本的发音');
+  const response = await fetch(`https://en.wiktionary.org/api/rest_v1/page/media-list/${encodeURIComponent(page)}`, { mode:'cors' });
+  if (!response.ok) throw new Error(`Wiktionary 发音查询 HTTP ${response.status}`);
+  const media = await response.json();
+  const audios = (Array.isArray(media?.items) ? media.items : []).filter(item => item?.type === 'audio' && item?.title);
+  if (!audios.length) throw new Error('Wiktionary 没有该单词的发音音频');
+  const preferred = type === 1
+    ? audios.find(item => /(?:^|[:\-_ ])en[-_ ]?(?:uk|gb)(?:[-_ .]|$)|british/i.test(item.title))
+    : audios.find(item => /(?:^|[:\-_ ])en[-_ ]?(?:us|usa)(?:[-_ .]|$)|american/i.test(item.title));
+  const title = (preferred || audios[0]).title;
+  const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=imageinfo&iiprop=url&format=json&origin=*`;
+  const infoResponse = await fetch(infoUrl, { mode:'cors' });
+  if (!infoResponse.ok) throw new Error(`Wikimedia 音频查询 HTTP ${infoResponse.status}`);
+  const info = await infoResponse.json();
+  const pages = info?.query?.pages ? Object.values(info.query.pages) : [];
+  const url = pages.find(item => item?.imageinfo?.[0]?.url)?.imageinfo?.[0]?.url;
+  if (!url) throw new Error('Wikimedia 没有返回音频地址');
+  return url.startsWith('//') ? 'https:' + url : url;
+}
+function playStandardAudio(word, type, volumePercent, token) {
+  if (token !== audioPlaybackToken) return;
+  const audio = new Audio(pronunciationUrl(word, type));
+  audio.volume = Math.max(0, Math.min(1, volumePercent / 100));
+  currentAudio = audio;
+  audio.onended = () => { if (currentAudio === audio) currentAudio = null; };
+  let fallbackStarted = false;
+  const fallback = () => { if (fallbackStarted || token !== audioPlaybackToken) return; fallbackStarted = true; if (currentAudio === audio) currentAudio = null; speakFallback(word, type, volumePercent, token); };
+  audio.onerror = fallback;
+  audio.play().catch(fallback);
+}
+async function playBoostedAudio(word, type, volumePercent, token) {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) throw new Error('Web Audio API unavailable');
+    if (!pronunciationAudioContext) pronunciationAudioContext = new AudioContextClass();
+    if (pronunciationAudioContext.state === 'suspended') await pronunciationAudioContext.resume();
+    const response = await fetch(await boostedPronunciationUrl(word, type), { mode:'cors' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const buffer = await pronunciationAudioContext.decodeAudioData(await response.arrayBuffer());
+    if (token !== audioPlaybackToken) return;
+    const source = pronunciationAudioContext.createBufferSource();
+    const gain = pronunciationAudioContext.createGain();
+    source.buffer = buffer;
+    gain.gain.value = Math.max(1, Math.min(2, volumePercent / 100));
+    source.connect(gain); gain.connect(pronunciationAudioContext.destination);
+    currentAudioSource = source;
+    source.onended = () => { if (currentAudioSource === source) currentAudioSource = null; };
+    source.start(0);
+  } catch(e) {
+    if (token !== audioPlaybackToken) return;
+    log('增强音量不可用，已回退到浏览器最大音量: ' + e.message);
+    if (!boostFallbackNotified) { boostFallbackNotified = true; toast('当前浏览器不支持增强音量，已使用系统最大音量'); }
+    playStandardAudio(word, type, 100, token);
+  }
+}
+function speakDirect(word, type, volumeOverride) {
+  if (!word) return;
+  stopCurrentSpeech();
+  const token = audioPlaybackToken;
+  const volumePercent = Number.isFinite(Number(volumeOverride)) ? Math.max(0, Math.min(200, Number(volumeOverride))) : devicePrefs.volumePercent;
+  if (volumePercent <= 0) return;
+  if (volumePercent > 100) playBoostedAudio(word, type, volumePercent, token);
+  else playStandardAudio(word, type, volumePercent, token);
+}
+function speakFallback(word, type, volumePercent = devicePrefs.volumePercent, token = audioPlaybackToken) {
+  if (token !== audioPlaybackToken || !window.speechSynthesis) return; const utter = new SpeechSynthesisUtterance(word); utter.lang = type === 1 ? 'en-GB' : 'en-US'; utter.rate = 0.9; utter.volume = Math.max(0, Math.min(1, volumePercent / 100));
   const voices = speechSynthesis.getVoices(), l = type === 1 ? 'en-GB' : 'en-US'; const m = voices.find(v => v.lang === l) || voices.find(v => v.lang.startsWith('en'));
   if (m) utter.voice = m; speechSynthesis.speak(utter);
 }
+function updateVolumeLabel(value) {
+  const percent = Math.max(0, Math.min(200, parseInt(value, 10) || 0));
+  const label = document.getElementById('cfgVolumeLbl'); if (label) label.textContent = percent + '%';
+  const hint = document.getElementById('cfgVolumeHint'); if (hint) hint.textContent = percent > 100 ? '增强音量可能受浏览器限制或产生轻微失真；失败时自动回退到 100%。' : '100% 为浏览器正常最大音量；超过 100% 将尝试软件增强。';
+}
+function previewVolume() { const input = document.getElementById('cfgVolume'); speakDirect('example', 2, parseInt(input?.value, 10) || 0); }
 if (window.speechSynthesis) { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); }
 
 function closeModal(id) {
@@ -3770,7 +3926,13 @@ document.addEventListener('visibilitychange', async () => {
   else renderCloudSaveState();
 });
 
-loadEmbedded(); loadLocalCache(); document.getElementById('lastSaveTime').textContent = lastSaveTime || '未保存';
+loadEmbedded();
+const hadLocalCacheAtStartup = !!localStorage.getItem(LOCAL_CACHE_KEY);
+loadLocalCache();
+loadDevicePrefs(legacyDevicePrefsCandidate, hadLocalCacheAtStartup && !!legacyDevicePrefsCandidate);
+removeLegacyDeviceConfigFields(config);
+applyUISize(devicePrefs.uiSize);
+document.getElementById('lastSaveTime').textContent = lastSaveTime || '未保存';
 
 // ==== 修复：强制初始化界面为标准状态，覆盖可能被错误保存进去的 DOM 样式 ====
 reciteMode = false;
